@@ -67,7 +67,16 @@ export function Home() {
   const trend = useMemo(() => {
     const since = addDays(asOfDate || trueLatestDate, -30)
     const last30 = sales.filter((s) => s.date >= since)
-    return groupByDate(last30).map((g) => ({ date: g.key, sales: g.sales }))
+    const byDate = groupByDate(last30)
+    return byDate.map((g) => {
+      const daySales = last30.filter((s) => s.date === g.key)
+      return {
+        date: g.key,
+        sales: g.sales,
+        units: g.units,
+        orders: new Set(daySales.map((s) => s.channelOrderId).filter(Boolean)).size,
+      }
+    })
   }, [sales, asOfDate, trueLatestDate])
 
   const sparklineValues = useMemo(() => trend.slice(-14).map((t) => t.sales), [trend])
