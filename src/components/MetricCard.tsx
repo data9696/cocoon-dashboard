@@ -7,16 +7,19 @@ interface MetricCardProps {
   changePct?: number | null
   changeAmount?: number
   changeLabel?: string
-  accent?: 'sage' | 'pink' | 'blue' | 'corn'
+  accent?: 'sage' | 'pink' | 'blue' | 'corn' | 'purple' | 'emerald' | 'orange'
   icon?: LucideIcon
   sparkline?: number[]
 }
 
 const ACCENT_MAP: Record<string, { text: string; bg: string }> = {
-  sage: { text: 'var(--color-sage-dark)', bg: 'var(--color-sage-light)' },
-  pink: { text: '#b3265f', bg: 'var(--color-dustypink-light)' },
-  blue: { text: '#2454a8', bg: 'var(--color-smokeblue-light)' },
-  corn: { text: '#8a6a1f', bg: 'var(--color-corn-light)' },
+  sage:    { text: '#166534', bg: '#dcfce7' },
+  pink:    { text: '#b3265f', bg: '#fce7f3' },
+  blue:    { text: '#1e40af', bg: '#dbeafe' },
+  corn:    { text: '#92400e', bg: '#fef3c7' },
+  purple:  { text: '#6d28d9', bg: '#ede9fe' },
+  emerald: { text: '#065f46', bg: '#d1fae5' },
+  orange:  { text: '#c2410c', bg: '#ffedd5' },
 }
 
 export function MetricCard({
@@ -34,44 +37,55 @@ export function MetricCard({
   const colors = ACCENT_MAP[accent]
 
   return (
-    <div className="card p-5">
-      <div className="flex items-center gap-2 mb-3">
+    <div className="card p-4 flex flex-col gap-2">
+      <div className="flex items-center gap-2">
         {Icon && (
           <div
             className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
             style={{ background: colors.bg, color: colors.text }}
           >
-            <Icon size={16} strokeWidth={2.25} />
+            <Icon size={15} strokeWidth={2.25} />
           </div>
         )}
-        <div className="text-xs uppercase tracking-wide text-[var(--color-muted)]">
+        <div className="text-xs uppercase tracking-wide text-[var(--color-muted)] font-medium">
           {label}
         </div>
       </div>
-      <div className="font-display text-2xl text-[var(--color-charcoal)]">{value}</div>
+
+      <div className="font-display text-xl text-[var(--color-charcoal)] leading-tight">
+        {value}
+      </div>
+
       {hasChange && (
-        <div
-          className={`text-xs mt-2 inline-flex items-center gap-1 ${
-            isUp ? 'text-[var(--color-sage-dark)]' : 'text-[#b4564f]'
-          }`}
-        >
-          <span>{isUp ? '▲' : '▼'}</span>
-          <span>{Math.abs(changePct!).toFixed(1)}%</span>
-          {changeAmount !== undefined && (
-            <span className="text-[var(--color-muted)]">
-              ({changeAmount >= 0 ? '+' : ''}
-              {Math.round(changeAmount).toLocaleString('en-IN')})
+        <div className="flex items-center gap-1.5">
+          <span
+            className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full"
+            style={{
+              background: isUp ? '#dcfce7' : '#fee2e2',
+              color: isUp ? '#166534' : '#991b1b',
+            }}
+          >
+            {isUp ? '▲' : '▼'} {Math.abs(changePct!).toFixed(1)}%
+          </span>
+          {changeLabel && (
+            <span className="text-xs text-[var(--color-muted)]">{changeLabel}</span>
+          )}
+          {changeAmount !== undefined && !changeLabel && (
+            <span className="text-xs text-[var(--color-muted)]">
+              {changeAmount >= 0 ? '+' : ''}
+              {Math.round(changeAmount).toLocaleString('en-IN')}
             </span>
           )}
-          {changeLabel && <span className="text-[var(--color-muted)]">{changeLabel}</span>}
         </div>
       )}
+
       {changePct === null && (
-        <div className="text-xs mt-2 text-[var(--color-muted)]">n/a (no prior data)</div>
+        <div className="text-xs text-[var(--color-muted)]">No prior data</div>
       )}
+
       {sparkline && sparkline.length > 1 && (
-        <div className="mt-2 -mx-1">
-          <MiniTrend values={sparkline} />
+        <div className="mt-1 -mx-1">
+          <MiniTrend values={sparkline} height={36} />
         </div>
       )}
     </div>

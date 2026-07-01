@@ -10,19 +10,19 @@ import { ProductAnalysis } from './pages/ProductAnalysis'
 function AppShell() {
   const { loading } = useData()
 
-  if (loading) {
-    return <LoadingScreen />
-  }
+  if (loading) return <LoadingScreen />
 
   return (
     <div className="flex min-h-screen bg-[var(--color-cream)]">
       <Sidebar />
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/overview" element={<SalesOverview />} />
-        <Route path="/channel-brand" element={<ChannelBrand />} />
-        <Route path="/products" element={<ProductAnalysis />} />
-      </Routes>
+      <main className="flex-1 min-w-0 overflow-x-hidden">
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/overview" element={<SalesOverview />} />
+          <Route path="/channel-brand" element={<ChannelBrand />} />
+          <Route path="/products" element={<ProductAnalysis />} />
+        </Routes>
+      </main>
     </div>
   )
 }

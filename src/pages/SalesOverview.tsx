@@ -98,11 +98,11 @@ export function SalesOverview() {
       <Reveal>
         <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-8">
           <MetricCard icon={ShoppingBag} label="Today" value={inr(dod.current)} changePct={dod.changePct} changeAmount={dod.changeAmount} accent="sage" sparkline={sparklineValues} />
-          <MetricCard icon={CalendarDays} label="Yesterday" value={inr(dod.prior)} accent="pink" sparkline={sparklineValues} />
-          <MetricCard icon={TrendingUp} label="WTD" value={inr(wow.current)} changePct={wow.changePct} changeAmount={wow.changeAmount} accent="blue" sparkline={sparklineValues} />
-          <MetricCard icon={Wallet} label="MTD" value={inr(mom.current)} changePct={mom.changePct} changeAmount={mom.changeAmount} accent="corn" sparkline={sparklineValues} />
-          <MetricCard icon={BarChart2} label="YTD" value={inr(ytdSales)} accent="sage" sparkline={sparklineValues} />
-          <MetricCard icon={Crosshair} label="Run Rate (Wtd)" value={`${runRateValue.toFixed(1)} u/day`} accent="pink" sparkline={sparklineValues} />
+        <MetricCard icon={CalendarDays} label="Yesterday" value={inr(dod.prior)} accent="blue" sparkline={sparklineValues} />
+        <MetricCard icon={TrendingUp} label="WTD" value={inr(wow.current)} changePct={wow.changePct} changeAmount={wow.changeAmount} accent="purple" sparkline={sparklineValues} />
+        <MetricCard icon={Wallet} label="MTD" value={inr(mom.current)} changePct={mom.changePct} changeAmount={mom.changeAmount} accent="corn" sparkline={sparklineValues} />
+        <MetricCard icon={BarChart2} label="YTD" value={inr(ytdSales)} accent="emerald" sparkline={sparklineValues} />
+        <MetricCard icon={Crosshair} label="Run Rate (Wtd)" value={`${runRateValue.toFixed(1)} u/day`} accent="orange" sparkline={sparklineValues} />
         </div>
       </Reveal>
 

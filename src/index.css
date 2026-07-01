@@ -20,6 +20,15 @@
   --color-muted: #8a8680;
   --color-border: #ece8e0;
 
+  --color-purple: #8b5cf6;
+  --color-purple-light: #ede9fe;
+
+  --color-orange: #f97316;
+  --color-orange-light: #ffedd5;
+  
+  --color-emerald: #059669;
+  --color-emerald-light: #d1fae5;
+
   --font-display: "Fraunces", "Georgia", serif;
   --font-body: "Inter", "Helvetica Neue", sans-serif;
 
