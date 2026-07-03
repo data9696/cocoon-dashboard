@@ -17,10 +17,10 @@ import { MetricCard } from '../components/MetricCard'
 import { TargetProgress } from '../components/TargetProgress'
 import { ShareBar } from '../components/ShareBar'
 import { BrandDonut } from '../components/BrandDonut'
-import { TrendChart } from '../components/TrendChart'
 import { QuickInsights } from '../components/QuickInsights'
 import { CalendarHeatmap } from '../components/CalendarHeatmap'
 import { MTMComparison } from '../components/MTMComparison'
+import { FilteredTrendSection } from '../components/FilteredTrendSection'
 import { WoWComparison } from '../components/WoWComparison'
 import { SalesSummaryCard } from '../components/SalesSummaryCard'
 import { resolveChannelStyle } from '../components/ChannelBadge'
@@ -46,7 +46,7 @@ import { BRAND_COLORS } from '../lib/brand'
 
 const inr = (n: number) => '₹' + Math.round(n).toLocaleString('en-IN')
 
-const MONTHLY_TARGET = 3000000
+const MONTHLY_TARGET = 10000000
 
 const NAV_ITEMS = [
   { to: '/overview', icon: BarChart3, title: 'Sales Overview', desc: 'KPIs & Trends' },
@@ -62,6 +62,10 @@ export function Home() {
   const wow = useMemo(() => buildMetricSummary(sales, weekOverWeekWindows(asOfDate)), [sales, asOfDate])
   const ytdWindow = useMemo(() => yearToDateWindow(asOfDate), [asOfDate])
   const ytdSales = useMemo(() => sumSales(filterSales(sales, ytdWindow)), [sales, ytdWindow])
+  const allChannels = useMemo(() =>
+    Array.from(new Set(sales.map(s => s.channel))).filter(Boolean).sort(),
+    [sales]
+  )
   const yesterdaySales = dod.prior
 
   const runRateValue = useMemo(
@@ -123,7 +127,7 @@ export function Home() {
           <MetricCard icon={CalendarDays} label="Yesterday" value={inr(yesterdaySales)} rawValue={yesterdaySales} accent="blue" sparkline={sparklineValues} dateLabel={yesterdayLabel} />
           <MetricCard icon={TrendingUp} label="This Week" value={inr(wow.current)} rawValue={wow.current} changePct={wow.changePct} changeAmount={wow.changeAmount} accent="purple" sparkline={sparklineValues} dateLabel={wtdLabel} />
           <MetricCard icon={Wallet} label="Month Sales" value={inr(monthTotalSales)} rawValue={monthTotalSales} accent="corn" sparkline={sparklineValues} dateLabel={monthLabel} />
-          <MetricCard icon={BarChart2} label="YTD" value={inr(ytdSales)} rawValue={ytdSales} accent="emerald" sparkline={sparklineValues} dateLabel={ytdLabel} />
+          <MetricCard icon={BarChart2} label="Year Sales" value={inr(ytdSales)} rawValue={ytdSales} accent="emerald" sparkline={sparklineValues} dateLabel={ytdLabel} />
           <MetricCard icon={Crosshair} label="Run Rate (Wtd)" value={`${runRateValue.toFixed(1)} u/day`} rawValue={runRateValue} accent="orange" sparkline={sparklineValues} dateLabel="30d weighted avg" />
         </div>
       </Reveal>
@@ -161,15 +165,14 @@ export function Home() {
 </Reveal>
 
       {/* Trend Chart + MTM Comparison + Target Progress */}
-      <Reveal delay={100}>
-  <div className="card p-5 mb-8">
-    <h3 className="font-display text-lg mb-4">
-      30-Day Sales Trend
-    </h3>
-
-    <TrendChart trend={trend} />
-  </div>
-</Reveal>
+  <Reveal delay={100}>
+      <FilteredTrendSection
+    sales={sales}
+    asOfDate={asOfDate}
+     allChannels={Array.from(new Set(sales.map(s => s.channel))).sort()}
+      title="Sales Trend"
+      />
+  </Reveal>
 
       {/* Calendar Heatmap */}
       <Reveal delay={130}>

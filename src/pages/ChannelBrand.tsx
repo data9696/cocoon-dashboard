@@ -1,206 +1,286 @@
-import { useMemo, useState, useEffect } from 'react'
-import {
-  LineChart, Line, XAxis, YAxis, CartesianGrid,
-  Tooltip, ResponsiveContainer, Legend,
-} from 'recharts'
+import { useMemo, useState } from 'react'
 import { useData } from '../lib/DataContext'
 import { PageLayout } from '../components/PageLayout'
 import { ChannelBadge } from '../components/ChannelBadge'
 import { BrandDonut } from '../components/BrandDonut'
 import { SortableTable } from '../components/SortableTable'
 import { QuickInsights } from '../components/QuickInsights'
+import { FilteredTrendSection } from '../components/FilteredTrendSection'
 import { Reveal } from '../components/Reveal'
-import { DateRangePicker, defaultDateRange } from '../components/DateRangePicker'
-import type { DateRange } from '../components/DateRangePicker'
 import {
   weekOverWeekWindows,
   monthOverMonthWindows,
   formatDisplayDate,
-  formatShortDate,
-  addDays,
   firstOfMonth,
+  addDays,
+  toDateString,
 } from '../lib/dateLogic'
 import {
   buildMetricSummary,
   filterSales,
   groupBy,
-  groupByDate,
 } from '../lib/aggregations'
 import { BRAND_COLORS } from '../lib/brand'
 
 const inr = (n: number) => '₹' + Math.round(n).toLocaleString('en-IN')
 
-const CHANNEL_LINE_COLORS = [
-  '#16a34a', '#2454a8', '#6d28d9', '#d97706',
-  '#dc2626', '#0891b2', '#be185d', '#065f46',
-]
-
 const ALL_BRANDS = ['All', 'Cocoon Care', 'The Boo Boo Club']
+
+type SortKey = 'channel' | 'wtd' | 'wow' | 'mtm' | 'mom'
+type SortDir = 'asc' | 'desc'
+
+function SortIcon({ active, dir }: { active: boolean; dir: SortDir }) {
+  return (
+    <span className={`ml-1 text-[10px] ${active ? 'text-[var(--color-sage-dark)]' : 'text-[var(--color-border)]'}`}>
+      {active ? (dir === 'asc' ? '▲' : '▼') : '⇅'}
+    </span>
+  )
+}
 
 export function ChannelBrand() {
   const { sales, asOfDate } = useData()
 
-  const [dateRange, setDateRange] = useState<DateRange | null>(null)
-  const [brandFilter, setBrandFilter] = useState<string>('All')
-  const [channelFilter, setChannelFilter] = useState<string>('All')
+  const [selectedBrands, setSelectedBrands] = useState<string[]>(['All'])
+  const [selectedChannels, setSelectedChannels] = useState<string[]>(['All'])
+  const [sortKey, setSortKey] = useState<SortKey>('mtm')
+  const [sortDir, setSortDir] = useState<SortDir>('desc')
+  const [summaryPreset, setSummaryPreset] = useState<'thisMonth' | 'last7' | 'last15' | 'lastMonth' | 'custom'>('thisMonth')
+  const [summaryBrand, setSummaryBrand] = useState<string>('All')
+  const [summaryCompany, setSummaryCompany] = useState<string>('All')
+  const [summaryCustomStart, setSummaryCustomStart] = useState('')
+  const [summaryCustomEnd, setSummaryCustomEnd] = useState('')
 
-  useEffect(() => {
-    if (asOfDate && !dateRange) {
-      setDateRange(defaultDateRange(asOfDate))
-    }
-  }, [asOfDate, dateRange])
-
-  const effectiveRange: DateRange = dateRange ?? {
-    start: asOfDate ? firstOfMonth(asOfDate) : '',
-    end: asOfDate ?? '',
-    label: 'This Month',
-  }
-
-  // All unique channels for filter
-  const allChannels = useMemo(() => {
-    const channels = Array.from(new Set(sales.map((s) => s.channel))).filter(Boolean).sort()
-    return ['All', ...channels]
-  }, [sales])
-
-  // WoW & MoM rows
-  const channels = useMemo(() => allChannels.filter((c) => c !== 'All'), [allChannels])
-
-  const channelRows = useMemo(
-    () =>
-      channels.map((ch) => {
-        const wow = buildMetricSummary(sales, weekOverWeekWindows(asOfDate), { channel: ch })
-        const mom = buildMetricSummary(sales, monthOverMonthWindows(asOfDate), { channel: ch })
-        return { channel: ch, wow, mom }
-      }),
-    [channels, sales, asOfDate]
+  const allChannels = useMemo(() =>
+    Array.from(new Set(sales.map((s) => s.channel))).filter(Boolean).sort(),
+    [sales]
   )
 
-  // Range-based sales with filters applied
-  const rangeSales = useMemo(() => {
-    let filtered = effectiveRange.start && effectiveRange.end
-      ? filterSales(sales, { start: effectiveRange.start, end: effectiveRange.end })
-      : []
-    if (brandFilter !== 'All') filtered = filtered.filter((s) => s.brand === brandFilter)
-    if (channelFilter !== 'All') filtered = filtered.filter((s) => s.channel === channelFilter)
+  const allCompanies = useMemo(() =>
+    ['All', ...Array.from(new Set(sales.map((s) => s.channel.split(' - ')[0]))).filter(Boolean).sort()],
+    [sales]
+  )
+
+  function toggleBrand(b: string) {
+    if (b === 'All') { setSelectedBrands(['All']); return }
+    const next = selectedBrands.filter(x => x !== 'All')
+    if (next.includes(b)) {
+      const r = next.filter(x => x !== b)
+      setSelectedBrands(r.length === 0 ? ['All'] : r)
+    } else setSelectedBrands([...next, b])
+  }
+
+  function toggleChannel(ch: string) {
+    if (ch === 'All') { setSelectedChannels(['All']); return }
+    const next = selectedChannels.filter(x => x !== 'All')
+    if (next.includes(ch)) {
+      const r = next.filter(x => x !== ch)
+      setSelectedChannels(r.length === 0 ? ['All'] : r)
+    } else setSelectedChannels([...next, ch])
+  }
+
+  const channelRows = useMemo(
+    () => allChannels.map((ch) => {
+      const wow = buildMetricSummary(sales, weekOverWeekWindows(asOfDate), { channel: ch })
+      const mom = buildMetricSummary(sales, monthOverMonthWindows(asOfDate), { channel: ch })
+      return { channel: ch, wow, mom }
+    }),
+    [allChannels, sales, asOfDate]
+  )
+
+  const monthStart = firstOfMonth(asOfDate)
+
+  const summaryLabels = {
+    thisMonth: 'This Month',
+    last7: 'Last 7 Days',
+    last15: 'Last 15 Days',
+    lastMonth: 'Last Month',
+    custom: 'Custom',
+  }
+
+  const summarySales = useMemo(() => {
+    const d = new Date(asOfDate)
+    const ranges: Record<string, { start: string; end: string }> = {
+      thisMonth: { start: monthStart, end: asOfDate },
+      last7: { start: addDays(asOfDate, -7), end: asOfDate },
+      last15: { start: addDays(asOfDate, -15), end: asOfDate },
+      lastMonth: {
+        start: toDateString(new Date(d.getFullYear(), d.getMonth() - 1, 1)),
+        end: toDateString(new Date(d.getFullYear(), d.getMonth(), 0)),
+      },
+      custom: {
+        start: summaryCustomStart || monthStart,
+        end: summaryCustomEnd || asOfDate,
+      },
+    }
+    let filtered = filterSales(sales, ranges[summaryPreset])
+    if (summaryBrand !== 'All') filtered = filtered.filter((s) => s.brand === summaryBrand)
+    if (summaryCompany !== 'All') filtered = filtered.filter((s) => s.channel.startsWith(summaryCompany))
     return filtered
-  }, [sales, effectiveRange, brandFilter, channelFilter])
+  }, [sales, asOfDate, summaryPreset, monthStart, summaryBrand, summaryCompany, summaryCustomStart, summaryCustomEnd])
+
+  const summaryTotal = summarySales.reduce((a, s) => a + s.invoiceAmount, 0)
+  const summaryUnits = summarySales.reduce((a, s) => a + s.qty, 0)
+  const summaryOrders = new Set(summarySales.map((s) => s.channelOrderId).filter(Boolean)).size
+
+  const rangeSales = useMemo(() => {
+    let filtered = filterSales(sales, { start: monthStart, end: asOfDate })
+    if (!selectedBrands.includes('All')) filtered = filtered.filter((s) => selectedBrands.includes(s.brand))
+    if (!selectedChannels.includes('All')) filtered = filtered.filter((s) => selectedChannels.includes(s.channel))
+    return filtered
+  }, [sales, asOfDate, monthStart, selectedBrands, selectedChannels])
 
   const byChannel = useMemo(() => groupBy(rangeSales, (s) => s.channel), [rangeSales])
   const byBrand = useMemo(() => groupBy(rangeSales, (s) => s.brand), [rangeSales])
-
-  const top5Channels = useMemo(() => byChannel.slice(0, 5).map((c) => c.key), [byChannel])
-
-  const multiLineTrend = useMemo(() => {
-    const rangeData = filterSales(sales, {
-      start: effectiveRange.start || addDays(asOfDate, -30),
-      end: effectiveRange.end || asOfDate,
-    })
-    const byDate = groupByDate(rangeData)
-    return byDate.map((g) => {
-      const row: Record<string, string | number> = { date: g.key }
-      for (const ch of top5Channels) {
-        const dayCh = rangeData.filter((s) => s.date === g.key && s.channel === ch)
-        row[ch] = dayCh.reduce((a, s) => a + s.invoiceAmount, 0)
-      }
-      return row
-    })
-  }, [sales, effectiveRange, top5Channels, asOfDate])
-
   const topChannel = byChannel[0]
   const worstChannel = byChannel[byChannel.length - 1]
   const totalSales = byChannel.reduce((a, c) => a + c.sales, 0)
+
+  function handleSort(key: SortKey) {
+    if (sortKey === key) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
+    else { setSortKey(key); setSortDir('desc') }
+  }
+
+  const sortedChannelRows = useMemo(() => {
+    const filtered = channelRows.filter(
+      (r) => selectedChannels.includes('All') || selectedChannels.includes(r.channel)
+    )
+    return [...filtered].sort((a, b) => {
+      let valA = 0, valB = 0
+      if (sortKey === 'wtd') { valA = a.wow.current; valB = b.wow.current }
+      else if (sortKey === 'wow') { valA = a.wow.changePct ?? 0; valB = b.wow.changePct ?? 0 }
+      else if (sortKey === 'mtm') { valA = a.mom.current; valB = b.mom.current }
+      else if (sortKey === 'mom') { valA = a.mom.changePct ?? 0; valB = b.mom.changePct ?? 0 }
+      else return sortDir === 'asc' ? a.channel.localeCompare(b.channel) : b.channel.localeCompare(a.channel)
+      return sortDir === 'asc' ? valA - valB : valB - valA
+    })
+  }, [channelRows, selectedChannels, sortKey, sortDir])
 
   return (
     <PageLayout
       title="Channel & Brand Sales"
       subtitle={`As of ${formatDisplayDate(asOfDate)}`}
     >
-      {/* Filters row */}
+      {/* Total Sales Summary Card with Brand + Company + Date filters */}
       <Reveal>
-        <div className="flex flex-wrap items-center gap-3 mb-6">
-          {/* Brand filter */}
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-[var(--color-muted)] uppercase tracking-wide">Brand</span>
-            <div className="flex gap-1">
-              {ALL_BRANDS.map((b) => (
-                <button
-                  key={b}
-                  onClick={() => setBrandFilter(b)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                    brandFilter === b
-                      ? 'bg-[var(--color-sage)] text-white shadow-sm'
-                      : 'bg-white border border-[var(--color-border)] text-[var(--color-muted)] hover:border-[var(--color-sage)]'
-                  }`}
-                >
-                  {b}
-                </button>
-              ))}
+        <div className="card p-5 mb-6">
+          <div className="mb-4">
+            <div className="text-xs uppercase tracking-wide text-[var(--color-muted)] mb-1">
+              Total Sales — {summaryLabels[summaryPreset]}
+              {summaryBrand !== 'All' ? ` · ${summaryBrand}` : ''}
+              {summaryCompany !== 'All' ? ` · ${summaryCompany}` : ''}
+            </div>
+            <div className="font-display text-3xl text-[var(--color-charcoal)]">{inr(summaryTotal)}</div>
+            <div className="text-sm text-[var(--color-muted)] mt-1">
+              {summaryUnits.toLocaleString('en-IN')} units · {summaryOrders.toLocaleString('en-IN')} orders
             </div>
           </div>
 
-          <div className="w-px h-5 bg-[var(--color-border)]" />
+          <div className="space-y-3 bg-[var(--color-cream)] rounded-xl p-4">
+            {/* Date Range */}
+            <div>
+              <div className="text-xs uppercase tracking-wide text-[var(--color-muted)] mb-2">Date Range</div>
+              <div className="flex flex-wrap gap-1.5">
+                {(Object.keys(summaryLabels) as Array<keyof typeof summaryLabels>).map((p) => (
+                  <button key={p} onClick={() => setSummaryPreset(p)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                      summaryPreset === p
+                        ? 'bg-[var(--color-sage)] text-white shadow-sm'
+                        : 'bg-white border border-[var(--color-border)] text-[var(--color-muted)] hover:border-[var(--color-sage)]'
+                    }`}>{summaryLabels[p]}</button>
+                ))}
+              </div>
+              {summaryPreset === 'custom' && (
+                <div className="flex items-center gap-2 mt-2 flex-wrap">
+                  <input type="date" value={summaryCustomStart} max={asOfDate}
+                    onChange={e => setSummaryCustomStart(e.target.value)}
+                    className="text-xs border border-[var(--color-border)] rounded-lg px-3 py-1.5 bg-white" />
+                  <span className="text-[var(--color-muted)] text-xs">→</span>
+                  <input type="date" value={summaryCustomEnd} max={asOfDate}
+                    onChange={e => setSummaryCustomEnd(e.target.value)}
+                    className="text-xs border border-[var(--color-border)] rounded-lg px-3 py-1.5 bg-white" />
+                </div>
+              )}
+            </div>
 
-          {/* Channel filter */}
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xs text-[var(--color-muted)] uppercase tracking-wide">Channel</span>
-            <div className="flex flex-wrap gap-1">
-              {allChannels.map((ch) => (
-                <button
-                  key={ch}
-                  onClick={() => setChannelFilter(ch)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                    channelFilter === ch
-                      ? 'bg-[var(--color-smokeblue)] text-white shadow-sm'
-                      : 'bg-white border border-[var(--color-border)] text-[var(--color-muted)] hover:border-[var(--color-smokeblue)]'
-                  }`}
-                >
-                  {ch === 'All' ? 'All' : <span className="flex items-center gap-1"><ChannelBadge channel={ch} size={14} />{ch.replace(/^[AF] - /, '')}</span>}
-                </button>
-              ))}
+            {/* Brand */}
+            <div>
+              <div className="text-xs uppercase tracking-wide text-[var(--color-muted)] mb-2">Brand</div>
+              <div className="flex flex-wrap gap-1.5">
+                {ALL_BRANDS.map((b) => (
+                  <button key={b} onClick={() => setSummaryBrand(b)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                      summaryBrand === b
+                        ? 'bg-[var(--color-sage)] text-white shadow-sm'
+                        : 'bg-white border border-[var(--color-border)] text-[var(--color-muted)] hover:border-[var(--color-sage)]'
+                    }`}>{b}</button>
+                ))}
+              </div>
+            </div>
+
+            {/* Company */}
+            <div>
+              <div className="text-xs uppercase tracking-wide text-[var(--color-muted)] mb-2">Company</div>
+              <div className="flex flex-wrap gap-1.5">
+                {allCompanies.map((c) => (
+                  <button key={c} onClick={() => setSummaryCompany(c)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                      summaryCompany === c
+                        ? 'bg-[#6d28d9] text-white shadow-sm'
+                        : 'bg-white border border-[var(--color-border)] text-[var(--color-muted)] hover:border-[#6d28d9]'
+                    }`}>{c}</button>
+                ))}
+              </div>
             </div>
           </div>
         </div>
       </Reveal>
 
-      {/* Trend chart with date range */}
-      <Reveal delay={60}>
-        <div className="card p-5 mb-8">
-          <div className="flex items-center justify-between flex-wrap gap-2 mb-4">
-            <h3 className="font-display text-lg">Channel Performance Trend</h3>
-            <span className="text-xs text-[var(--color-muted)]">{effectiveRange.label}</span>
-          </div>
-          <DateRangePicker asOf={asOfDate} onChange={setDateRange} />
-          {multiLineTrend.length > 1 ? (
-            <ResponsiveContainer width="100%" height={280}>
-              <LineChart data={multiLineTrend}>
-                <CartesianGrid stroke="var(--color-border)" vertical={false} />
-                <XAxis
-                  dataKey="date"
-                  tick={{ fontSize: 10 }}
-                  minTickGap={30}
-                  tickFormatter={(d) => formatShortDate(d)}
-                />
-                <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`} />
-                <Tooltip formatter={(v) => inr(Number(v))} />
-                <Legend />
-                {top5Channels.map((ch, i) => (
-                  <Line
-                    key={ch}
-                    type="monotone"
-                    dataKey={ch}
-                    stroke={CHANNEL_LINE_COLORS[i % CHANNEL_LINE_COLORS.length]}
-                    strokeWidth={2}
-                    dot={false}
-                    isAnimationActive={false}
-                  />
+      {/* Filtered Trend Chart */}
+      <Reveal delay={40}>
+        <FilteredTrendSection
+          sales={sales}
+          asOfDate={asOfDate}
+          allChannels={allChannels}
+          title="Channel Performance Trend"
+        />
+      </Reveal>
+
+      {/* Multi-select filters for tables below */}
+      <Reveal delay={80}>
+        <div className="card p-5 mb-6">
+          <h3 className="font-display text-lg mb-4">Filter Tables Below</h3>
+          <div className="space-y-4">
+            <div>
+              <div className="text-xs uppercase tracking-wide text-[var(--color-muted)] mb-2">
+                Brand <span className="normal-case font-normal opacity-60 ml-1">(multi-select)</span>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {ALL_BRANDS.map((b) => (
+                  <button key={b} onClick={() => toggleBrand(b)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                      selectedBrands.includes(b)
+                        ? 'bg-[var(--color-sage)] text-white shadow-sm'
+                        : 'bg-white border border-[var(--color-border)] text-[var(--color-muted)] hover:border-[var(--color-sage)]'
+                    }`}>{b}</button>
                 ))}
-              </LineChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="h-[280px] flex items-center justify-center text-[var(--color-muted)] text-sm">
-              No data for this period
+              </div>
             </div>
-          )}
+            <div>
+              <div className="text-xs uppercase tracking-wide text-[var(--color-muted)] mb-2">
+                Channel <span className="normal-case font-normal opacity-60 ml-1">(multi-select)</span>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {['All', ...allChannels].map((ch) => (
+                  <button key={ch} onClick={() => toggleChannel(ch)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                      selectedChannels.includes(ch)
+                        ? 'bg-[var(--color-smokeblue)] text-white shadow-sm'
+                        : 'bg-white border border-[var(--color-border)] text-[var(--color-muted)] hover:border-[var(--color-smokeblue)]'
+                    }`}>{ch === 'All' ? 'All' : ch}</button>
+                ))}
+              </div>
+            </div>
+          </div>
         </div>
       </Reveal>
 
@@ -219,7 +299,6 @@ export function ChannelBrand() {
                 {totalSales > 0 ? ((topChannel.sales / totalSales) * 100).toFixed(0) : 0}% of total · {topChannel.units} units
               </div>
             </div>
-
             {worstChannel && worstChannel.key !== topChannel.key && (
               <div className="card p-5 border-l-4 border-[#dc2626]">
                 <div className="text-xs uppercase tracking-wide text-[var(--color-muted)] mb-2">⚠️ Lowest Channel</div>
@@ -233,7 +312,6 @@ export function ChannelBrand() {
                 </div>
               </div>
             )}
-
             {byBrand[0] && (() => {
               const topBrand = byBrand[0]
               const brandTotal = byBrand.reduce((a, b) => a + b.sales, 0)
@@ -255,7 +333,7 @@ export function ChannelBrand() {
       <Reveal delay={140}>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
           <SortableTable
-            title={`Channel Mix — ${effectiveRange.label}`}
+            title="Channel Mix — This Month"
             rows={byChannel.map((c) => ({
               name: <span className="flex items-center gap-2"><ChannelBadge channel={c.key} />{c.key}</span>,
               namePlain: c.key,
@@ -263,9 +341,8 @@ export function ChannelBrand() {
               units: c.units,
             }))}
           />
-
           <div className="card p-5">
-            <h3 className="font-display text-lg mb-4">Brand Split — {effectiveRange.label}</h3>
+            <h3 className="font-display text-lg mb-4">Brand Split — This Month</h3>
             <BrandDonut data={byBrand} colors={BRAND_COLORS} />
             <table className="w-full text-sm mt-4">
               <thead>
@@ -299,40 +376,47 @@ export function ChannelBrand() {
         </div>
       </Reveal>
 
-      {/* WoW & MoM table */}
+      {/* WoW & MoM sortable table */}
       <Reveal delay={180}>
         <div className="card p-5 mb-8 overflow-x-auto">
           <h3 className="font-display text-lg mb-4">Channel Performance — WoW &amp; MoM</h3>
           <table className="w-full text-sm min-w-[600px]">
             <thead>
               <tr className="text-left text-[var(--color-muted)] text-xs uppercase border-b border-[var(--color-border)]">
-                <th className="pb-2">Channel</th>
-                <th className="pb-2 text-right">WTD Sales</th>
-                <th className="pb-2 text-right">WoW %</th>
-                <th className="pb-2 text-right">MTM Sales</th>
-                <th className="pb-2 text-right">MoM %</th>
+                <th className="pb-2 cursor-pointer select-none" onClick={() => handleSort('channel')}>
+                  Channel <SortIcon active={sortKey === 'channel'} dir={sortDir} />
+                </th>
+                <th className="pb-2 text-right cursor-pointer select-none" onClick={() => handleSort('wtd')}>
+                  WTD Sales <SortIcon active={sortKey === 'wtd'} dir={sortDir} />
+                </th>
+                <th className="pb-2 text-right cursor-pointer select-none" onClick={() => handleSort('wow')}>
+                  WoW % <SortIcon active={sortKey === 'wow'} dir={sortDir} />
+                </th>
+                <th className="pb-2 text-right cursor-pointer select-none" onClick={() => handleSort('mtm')}>
+                  MTM Sales <SortIcon active={sortKey === 'mtm'} dir={sortDir} />
+                </th>
+                <th className="pb-2 text-right cursor-pointer select-none" onClick={() => handleSort('mom')}>
+                  MoM % <SortIcon active={sortKey === 'mom'} dir={sortDir} />
+                </th>
               </tr>
             </thead>
             <tbody>
-              {channelRows
-                .filter((r) => channelFilter === 'All' || r.channel === channelFilter)
-                .sort((a, b) => b.mom.current - a.mom.current)
-                .map((r) => (
-                  <tr key={r.channel} className="border-t border-[var(--color-border)] hover:bg-[var(--color-cream)]">
-                    <td className="py-2 flex items-center gap-2">
-                      <ChannelBadge channel={r.channel} />
-                      {r.channel}
-                    </td>
-                    <td className="py-2 text-right">{inr(r.wow.current)}</td>
-                    <td className={`py-2 text-right font-medium ${(r.wow.changePct ?? 0) >= 0 ? 'text-[var(--color-sage-dark)]' : 'text-[#dc2626]'}`}>
-                      {r.wow.changePct === null ? '—' : `${r.wow.changePct >= 0 ? '+' : ''}${r.wow.changePct.toFixed(1)}%`}
-                    </td>
-                    <td className="py-2 text-right">{inr(r.mom.current)}</td>
-                    <td className={`py-2 text-right font-medium ${(r.mom.changePct ?? 0) >= 0 ? 'text-[var(--color-sage-dark)]' : 'text-[#dc2626]'}`}>
-                      {r.mom.changePct === null ? '—' : `${r.mom.changePct >= 0 ? '+' : ''}${r.mom.changePct.toFixed(1)}%`}
-                    </td>
-                  </tr>
-                ))}
+              {sortedChannelRows.map((r) => (
+                <tr key={r.channel} className="border-t border-[var(--color-border)] hover:bg-[var(--color-cream)]">
+                  <td className="py-2 flex items-center gap-2">
+                    <ChannelBadge channel={r.channel} />
+                    {r.channel}
+                  </td>
+                  <td className="py-2 text-right">{inr(r.wow.current)}</td>
+                  <td className={`py-2 text-right font-medium ${(r.wow.changePct ?? 0) >= 0 ? 'text-[var(--color-sage-dark)]' : 'text-[#dc2626]'}`}>
+                    {r.wow.changePct === null ? '—' : `${r.wow.changePct >= 0 ? '+' : ''}${r.wow.changePct.toFixed(1)}%`}
+                  </td>
+                  <td className="py-2 text-right">{inr(r.mom.current)}</td>
+                  <td className={`py-2 text-right font-medium ${(r.mom.changePct ?? 0) >= 0 ? 'text-[var(--color-sage-dark)]' : 'text-[#dc2626]'}`}>
+                    {r.mom.changePct === null ? '—' : `${r.mom.changePct >= 0 ? '+' : ''}${r.mom.changePct.toFixed(1)}%`}
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
@@ -341,7 +425,7 @@ export function ChannelBrand() {
       {/* Quick Insights */}
       <Reveal delay={220}>
         <div className="mb-8">
-          <QuickInsights sales={rangeSales} label={effectiveRange.label} />
+          <QuickInsights sales={rangeSales} label="This Month" />
         </div>
       </Reveal>
     </PageLayout>

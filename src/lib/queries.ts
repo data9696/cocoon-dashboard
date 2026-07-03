@@ -29,7 +29,7 @@ export async function fetchAllSales(): Promise<NormalizedSale[]> {
       results.push({
   date: unixToISTDateString(row.order_date),
   hour: unixToISTHour(row.order_date),
-  channel: row.channel || 'Unknown',
+  channel: row.company && row.channel ? `${row.company} - ${row.channel}` : row.channel || 'Unknown',
   brand: brandFromListingSku(row.listing_sku),
   skuCode: row.sku_code || '',
   listingSku: row.listing_sku || '',
