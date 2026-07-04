@@ -87,7 +87,7 @@ export function Sidebar() {
   return (
     <>
       <button
-        className="md:hidden fixed top-4 left-4 z-50 w-10 h-10 rounded-xl bg-white border border-[var(--color-border)] flex items-center justify-center shadow-md"
+        className="md:hidden fixed top-4 left-4 z-50 w-10 h-10 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)] flex items-center justify-center shadow-md"
         onClick={() => setMobileOpen(true)}
       >
         <Menu size={20} className="text-[var(--color-charcoal)]" />
@@ -102,7 +102,7 @@ export function Sidebar() {
 
       <aside
         className={clsx(
-          'fixed top-0 left-0 h-full z-50 flex flex-col bg-white sidebar-panel transition-transform duration-300',
+          'fixed top-0 left-0 h-full z-50 flex flex-col bg-[var(--color-surface)] sidebar-panel transition-transform duration-300',
           'w-72 md:w-64',
           'md:sticky md:translate-x-0 md:shrink-0 md:h-screen md:flex',
           mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'

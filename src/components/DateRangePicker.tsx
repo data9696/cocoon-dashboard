@@ -58,7 +58,7 @@ export function DateRangePicker({ asOf, onChange }: Props) {
           className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${
             active === preset
               ? 'bg-[var(--color-sage)] text-white shadow-md scale-105'
-              : 'bg-white border border-[var(--color-border)] text-[var(--color-charcoal)] hover:border-[var(--color-sage)] hover:text-[var(--color-sage-dark)]'
+              : 'bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-charcoal)] hover:border-[var(--color-sage)] hover:text-[var(--color-sage-dark)]'
           }`}
         >
           {preset}
@@ -68,19 +68,19 @@ export function DateRangePicker({ asOf, onChange }: Props) {
       {active === 'Custom' && (
         <div className="flex items-center gap-2 ml-2">
           <input
-            type="date"
+            type="date" lang="en-GB"
             value={customStart}
             max={asOf}
             onChange={(e) => setCustomStart(e.target.value)}
-            className="text-sm border border-[var(--color-border)] rounded-lg px-3 py-1.5 bg-white"
+            className="text-sm border border-[var(--color-border)] rounded-lg px-3 py-1.5 bg-[var(--color-surface)]"
           />
           <span className="text-[var(--color-muted)] text-sm">→</span>
           <input
-            type="date"
+            type="date" lang="en-GB"
             value={customEnd}
             max={asOf}
             onChange={(e) => setCustomEnd(e.target.value)}
-            className="text-sm border border-[var(--color-border)] rounded-lg px-3 py-1.5 bg-white"
+            className="text-sm border border-[var(--color-border)] rounded-lg px-3 py-1.5 bg-[var(--color-surface)]"
           />
           <button
             onClick={applyCustom}

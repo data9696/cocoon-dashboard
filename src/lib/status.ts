@@ -7,6 +7,8 @@ export const VALID_SALE_STATUSES = new Set<string>([
   'In Transit',
   'Packed',
   'Delivered',
+  'Ready to ship',
+  'Return Rejected',
 ])
 
 export const EXCLUDED_SALE_STATUSES = new Set<string>([
@@ -17,6 +19,8 @@ export const EXCLUDED_SALE_STATUSES = new Set<string>([
   'Return Init',
   'Return Received',
   'Cancelled Return Received',
+  'Partial Return Received',
+  'Partial Cancelled Return Received',
 ])
 
 /** True if a row's status should be counted as a real, valid sale. */

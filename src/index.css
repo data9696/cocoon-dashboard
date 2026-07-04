@@ -15,7 +15,7 @@
   --color-corn: #e8c468;
   --color-corn-light: #fbf1da;
 
-  --color-cream: #faf8f4;
+  --color-surface: #ffffff;
   --color-charcoal: #3a3835;
   --color-muted: #8a8680;
   --color-border: #ece8e0;
@@ -50,6 +50,7 @@
   /* Dark theme color variables — toggled by adding class="dark" to <html> */
   html.dark {
     --color-cream: #1c1b19;
+    --color-surface: #252320;
     --color-charcoal: #f0eee8;
     --color-muted: #9a958c;
     --color-border: #34322e;

@@ -71,11 +71,11 @@ export function Home() {
 
   // Full month sales (1st to today)
   const monthTotalSales = useMemo(() => {
-    const { start } = monthOverMonthWindows(asOfDate).current
-    return sales
-      .filter((s) => s.date >= start && s.date <= asOfDate)
-      .reduce((a, s) => a + s.invoiceAmount, 0)
-  }, [sales, asOfDate])
+  const { start, end } = monthOverMonthWindows(asOfDate).current
+  return sales
+    .filter((s) => s.date >= start && s.date <= end)
+    .reduce((a, s) => a + s.invoiceAmount, 0)
+}, [sales, asOfDate])
 
   const trend = useMemo(() => {
     const since = addDays(asOfDate || trueLatestDate, -30)
@@ -111,7 +111,7 @@ export function Home() {
   const yesterdayLabel = formatDisplayDate(addDays(asOfDate, -1))
   const wtdWindows = weekOverWeekWindows(asOfDate)
   const wtdLabel = `${formatShortDate(wtdWindows.current.start)} – ${formatShortDate(asOfDate)}`
-  const monthLabel = `1 ${new Date(asOfDate).toLocaleDateString('en-GB', { month: 'short' })} – ${formatShortDate(asOfDate)}`
+  const monthLabel = `1 ${new Date(asOfDate).toLocaleDateString('en-GB', { month: 'short' })} – ${formatShortDate(monthOverMonthWindows(asOfDate).current.end)}`
   const ytdLabel = `1 Jan – ${formatShortDate(asOfDate)}`
 
   return (
@@ -132,7 +132,7 @@ export function Home() {
       {/* Sales Summary Card */}
 <Reveal delay={90}>
   <SalesSummaryCard
-    sales={monthSales}
+    sales={sales}
     asOfDate={asOfDate}
     label="This Month"
     onBrandChange={setHomeBrandFilter}

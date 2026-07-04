@@ -100,7 +100,7 @@ export function ChannelBrand() {
   const summarySales = useMemo(() => {
     const d = new Date(asOfDate)
     const ranges: Record<string, { start: string; end: string }> = {
-      thisMonth: { start: monthStart, end: asOfDate },
+      thisMonth: { start: monthStart, end: monthOverMonthWindows(asOfDate).current.end },
       last7: { start: addDays(asOfDate, -7), end: asOfDate },
       last15: { start: addDays(asOfDate, -15), end: asOfDate },
       lastMonth: {
@@ -185,19 +185,19 @@ export function ChannelBrand() {
                     className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
                       summaryPreset === p
                         ? 'bg-[var(--color-sage)] text-white shadow-sm'
-                        : 'bg-white border border-[var(--color-border)] text-[var(--color-muted)] hover:border-[var(--color-sage)]'
+                        : 'bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-muted)] hover:border-[var(--color-sage)]'
                     }`}>{summaryLabels[p]}</button>
                 ))}
               </div>
               {summaryPreset === 'custom' && (
                 <div className="flex items-center gap-2 mt-2 flex-wrap">
-                  <input type="date" value={summaryCustomStart} max={asOfDate}
+                  <input type="date" lang="en-GB" value={summaryCustomStart} max={asOfDate}
                     onChange={e => setSummaryCustomStart(e.target.value)}
-                    className="text-xs border border-[var(--color-border)] rounded-lg px-3 py-1.5 bg-white" />
+                    className="text-xs border border-[var(--color-border)] rounded-lg px-3 py-1.5 bg-[var(--color-surface)]" />
                   <span className="text-[var(--color-muted)] text-xs">→</span>
-                  <input type="date" value={summaryCustomEnd} max={asOfDate}
+                  <input type="date" lang="en-GB" value={summaryCustomEnd} max={asOfDate}
                     onChange={e => setSummaryCustomEnd(e.target.value)}
-                    className="text-xs border border-[var(--color-border)] rounded-lg px-3 py-1.5 bg-white" />
+                    className="text-xs border border-[var(--color-border)] rounded-lg px-3 py-1.5 bg-[var(--color-surface)]" />
                 </div>
               )}
             </div>
@@ -211,7 +211,7 @@ export function ChannelBrand() {
                     className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
                       summaryBrand === b
                         ? 'bg-[var(--color-sage)] text-white shadow-sm'
-                        : 'bg-white border border-[var(--color-border)] text-[var(--color-muted)] hover:border-[var(--color-sage)]'
+                        : 'bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-muted)] hover:border-[var(--color-sage)]'
                     }`}>{b}</button>
                 ))}
               </div>
@@ -226,7 +226,7 @@ export function ChannelBrand() {
                     className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
                       summaryCompany === c
                         ? 'bg-[#6d28d9] text-white shadow-sm'
-                        : 'bg-white border border-[var(--color-border)] text-[var(--color-muted)] hover:border-[#6d28d9]'
+                        : 'bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-muted)] hover:border-[#6d28d9]'
                     }`}>{c}</button>
                 ))}
               </div>
@@ -260,7 +260,7 @@ export function ChannelBrand() {
                     className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
                       selectedBrands.includes(b)
                         ? 'bg-[var(--color-sage)] text-white shadow-sm'
-                        : 'bg-white border border-[var(--color-border)] text-[var(--color-muted)] hover:border-[var(--color-sage)]'
+                        : 'bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-muted)] hover:border-[var(--color-sage)]'
                     }`}>{b}</button>
                 ))}
               </div>
@@ -275,7 +275,7 @@ export function ChannelBrand() {
                     className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
                       selectedChannels.includes(ch)
                         ? 'bg-[var(--color-smokeblue)] text-white shadow-sm'
-                        : 'bg-white border border-[var(--color-border)] text-[var(--color-muted)] hover:border-[var(--color-smokeblue)]'
+                        : 'bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-muted)] hover:border-[var(--color-smokeblue)]'
                     }`}>{ch === 'All' ? 'All' : ch}</button>
                 ))}
               </div>

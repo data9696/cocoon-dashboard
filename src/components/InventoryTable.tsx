@@ -71,7 +71,7 @@ export function InventoryTable({ rows }: Props) {
           placeholder="Search SKU ID, SKU code, or name…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="px-3 py-1.5 text-sm rounded-lg border border-[var(--color-border)] bg-white focus:outline-none focus:ring-2 focus:ring-[var(--color-sage)] w-full sm:w-64"
+          className="px-3 py-1.5 text-sm rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] focus:outline-none focus:ring-2 focus:ring-[var(--color-sage)] w-full sm:w-64"
         />
       </div>
 

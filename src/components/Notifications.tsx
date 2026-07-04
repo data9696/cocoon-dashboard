@@ -102,7 +102,7 @@ export function Notifications({ sales, stock, asOfDate }: { sales: NormalizedSal
       {open && (
         <>
           <div className="fixed inset-0 z-30" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 top-11 w-80 bg-white rounded-2xl shadow-xl border border-[var(--color-border)] z-40 overflow-hidden">
+          <div className="absolute right-0 top-11 w-80 bg-[var(--color-surface)] rounded-2xl shadow-xl border border-[var(--color-border)] z-40 overflow-hidden">
             <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--color-border)]">
               <span className="font-display text-base">Notifications</span>
               <button onClick={() => setOpen(false)} className="text-[var(--color-muted)]"><X size={16} /></button>

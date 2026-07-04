@@ -12,6 +12,7 @@ interface DataContextValue {
   error: string | null
   trueLatestDate: string
   asOfDate: string
+  lastSyncedAt: Date | null
   setAsOfDate: (date: string | null) => void
   refresh: () => void
 }
@@ -25,6 +26,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null)
   const [asOfOverride, setAsOfOverride] = useState<string | null>(null)
   const [reloadKey, setReloadKey] = useState(0)
+  const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -36,6 +38,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         if (cancelled) return
         setSales(salesData)
         setStock(stockData)
+        setLastSyncedAt(new Date())
       })
       .catch((err) => {
         if (cancelled) return
@@ -52,6 +55,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const trueLatestDate = useMemo(() => latestDateWithData(sales), [sales])
   const asOfDate = asOfOverride || todayIST()
+
   const value: DataContextValue = {
     sales,
     stock,
@@ -59,6 +63,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     error,
     trueLatestDate,
     asOfDate,
+    lastSyncedAt,
     setAsOfDate: setAsOfOverride,
     refresh: () => setReloadKey((k) => k + 1),
   }

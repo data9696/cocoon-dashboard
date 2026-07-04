@@ -63,7 +63,7 @@ export function LoadingScreen() {
               onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
               placeholder="e.g. CoCoon Care"
               autoFocus
-              className="text-sm border border-[var(--color-border)] rounded-lg px-4 py-2 bg-white text-[var(--color-charcoal)] outline-none focus:border-[var(--color-sage)]"
+              className="text-sm border border-[var(--color-border)] rounded-lg px-4 py-2 bg-[var(--color-surface)] text-[var(--color-charcoal)] outline-none focus:border-[var(--color-sage)]"
             />
             <button
               onClick={handleSubmit}

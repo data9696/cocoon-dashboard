@@ -2,7 +2,7 @@ import { supabase } from './supabaseClient'
 import { brandFromListingSku } from './brand'
 import type { NormalizedSale, RawOrderItem, StockSnapshot } from '../types'
 import { unixToISTDateString, unixToISTHour } from './dateLogic'
-import { isValidSaleStatus } from './status'
+
 
 const PAGE_SIZE = 5000
 
@@ -28,8 +28,7 @@ export async function fetchAllSales(): Promise<NormalizedSale[]> {
     }
 
     for (const row of data as RawOrderItem[]) {
-      if (!isValidSaleStatus(row.status || '')) continue
-      results.push({
+    results.push({
         date: unixToISTDateString(row.order_date),
         hour: unixToISTHour(row.order_date),
         channel: row.company && row.channel ? `${row.company} - ${row.channel}` : row.channel || 'Unknown',

@@ -58,7 +58,7 @@ export function GlobalSearch({ sales }: { sales: NormalizedSale[] }) {
     <div className="relative">
       <button
         onClick={() => setOpen(true)}
-        className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-[var(--color-border)] bg-white text-[var(--color-muted)] text-sm hover:border-[var(--color-sage)] transition-colors"
+        className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-muted)] text-sm hover:border-[var(--color-sage)] transition-colors"
       >
         <Search size={14} />
         <span className="hidden sm:inline">Search...</span>
@@ -68,7 +68,7 @@ export function GlobalSearch({ sales }: { sales: NormalizedSale[] }) {
       {open && (
         <>
           <div className="fixed inset-0 bg-black/30 z-40" onClick={() => setOpen(false)} />
-          <div className="fixed top-20 left-1/2 -translate-x-1/2 w-full max-w-lg bg-white rounded-2xl shadow-2xl border border-[var(--color-border)] z-50 overflow-hidden">
+          <div className="fixed top-20 left-1/2 -translate-x-1/2 w-full max-w-lg bg-[var(--color-surface)] rounded-2xl shadow-2xl border border-[var(--color-border)] z-50 overflow-hidden">
             <div className="flex items-center gap-3 px-4 py-3 border-b border-[var(--color-border)]">
               <Search size={16} className="text-[var(--color-muted)] shrink-0" />
               <input ref={inputRef} type="text" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search SKU, channel, brand..." className="flex-1 text-sm outline-none bg-transparent text-[var(--color-charcoal)] placeholder:text-[var(--color-muted)]" />

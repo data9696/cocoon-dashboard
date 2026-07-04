@@ -11,11 +11,11 @@ export function AsOfDatePicker() {
         As of
       </label>
       <input
-        type="date"
+        type="date" lang="en-GB"
         value={asOfDate || ''}
         max={trueLatestDate || undefined}
         onChange={(e) => setAsOfDate(e.target.value || null)}
-        className="text-sm border border-[var(--color-border)] rounded-lg px-3 py-1.5 bg-white"
+        className="text-sm border border-[var(--color-border)] rounded-lg px-3 py-1.5 bg-[var(--color-surface)]"
       />
       {isOverridden && (
         <button

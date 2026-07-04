@@ -38,11 +38,11 @@ export function SalesOverview() {
   const wow = useMemo(() => buildMetricSummary(sales, weekOverWeekWindows(asOfDate)), [sales, asOfDate])
 
   const monthTotalSales = useMemo(() => {
-    const { start } = monthOverMonthWindows(asOfDate).current
-    return sales
-      .filter((s) => s.date >= start && s.date <= asOfDate)
-      .reduce((a, s) => a + s.invoiceAmount, 0)
-  }, [sales, asOfDate])
+  const { start, end } = monthOverMonthWindows(asOfDate).current
+  return sales
+    .filter((s) => s.date >= start && s.date <= end)
+    .reduce((a, s) => a + s.invoiceAmount, 0)
+}, [sales, asOfDate])
 
   const ytdWindow = useMemo(() => yearToDateWindow(asOfDate), [asOfDate])
   const ytdSales = useMemo(() => sumSales(filterSales(sales, ytdWindow)), [sales, ytdWindow])
@@ -63,9 +63,9 @@ export function SalesOverview() {
   )
 
   const monthSales = useMemo(
-    () => filterSales(sales, { start: firstOfMonth(asOfDate), end: asOfDate }),
-    [sales, asOfDate]
-  )
+  () => filterSales(sales, monthOverMonthWindows(asOfDate).current),
+  [sales, asOfDate]
+ )
 
   const byChannel = useMemo(() => groupBy(monthSales, (s) => s.channel), [monthSales])
   const byBrand = useMemo(() => groupBy(monthSales, (s) => s.brand), [monthSales])
@@ -80,7 +80,7 @@ export function SalesOverview() {
   const rangeAOV = monthSales.length > 0 ? rangeTotalSales / monthSales.length : 0
 
   const wtdLabel = `${formatShortDate(weekOverWeekWindows(asOfDate).current.start)} – ${formatShortDate(asOfDate)}`
-  const monthLabel = `1 ${new Date(asOfDate).toLocaleDateString('en-GB', { month: 'short' })} – ${formatShortDate(asOfDate)}`
+  const monthLabel = `1 ${new Date(asOfDate).toLocaleDateString('en-GB', { month: 'short' })} – ${formatShortDate(monthOverMonthWindows(asOfDate).current.end)}`
 
   return (
     <PageLayout
@@ -112,7 +112,7 @@ export function SalesOverview() {
       {/* Sales Summary with brand filter */}
       <Reveal delay={100}>
         <SalesSummaryCard
-          sales={monthSales}
+          sales={sales}
           asOfDate={asOfDate}
           label="This Month"
           onBrandChange={setOverviewBrandFilter}

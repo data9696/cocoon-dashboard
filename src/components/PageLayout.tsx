@@ -6,6 +6,7 @@ import { Notifications } from './Notifications'
 import { GlobalSearch } from './GlobalSearch'
 import { formatDisplayDate } from '../lib/dateLogic'
 import { RefreshCw } from 'lucide-react'
+import { LastSynced } from './LastSynced'
 
 function greeting(): string {
   const h = new Date().getHours()
@@ -23,8 +24,8 @@ export function PageLayout({
   subtitle?: string
   children: ReactNode
 }) {
-  const { loading, error, sales, stock, trueLatestDate, asOfDate, refresh } = useData()
-  const userName = localStorage.getItem('dashboard_user_name') || 'Team'
+  const { loading, error, sales, stock, trueLatestDate, asOfDate, lastSyncedAt, refresh } = useData()
+ const userName = localStorage.getItem('dashboard_user_name') || 'Team'
 
   return (
     <div className="flex-1 px-4 md:px-8 py-4 md:py-6 w-full max-w-[1400px] pt-16 md:pt-6">
@@ -52,6 +53,7 @@ export function PageLayout({
             </span>
             <span className="hidden lg:inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-[var(--color-corn-light)] text-[#8a6a1f]">
               📅 {formatDisplayDate(trueLatestDate)}
+              <LastSynced at={lastSyncedAt} />
             </span>
           </div>
 

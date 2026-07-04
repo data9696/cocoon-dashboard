@@ -212,7 +212,7 @@ export function FilteredTrendSection({ sales, asOfDate, allChannels, title = 'Sa
                 className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
                   selectedCompanies.includes(c)
                     ? 'bg-[#6d28d9] text-white shadow-sm'
-                    : 'bg-white border border-[var(--color-border)] text-[var(--color-muted)] hover:border-[#6d28d9]'
+                    : 'bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-muted)] hover:border-[#6d28d9]'
                 }`}>{c}</button>
             ))}
           </div>
@@ -225,17 +225,17 @@ export function FilteredTrendSection({ sales, asOfDate, allChannels, title = 'Sa
                 className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
                   preset === p.key
                     ? 'bg-[var(--color-sage)] text-white shadow-sm'
-                    : 'bg-white border border-[var(--color-border)] text-[var(--color-muted)] hover:border-[var(--color-sage)]'
+                    : 'bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-muted)] hover:border-[var(--color-sage)]'
                 }`}>{p.label}</button>
             ))}
           </div>
           {preset === 'custom' && (
             <div className="flex items-center gap-2 mt-2 flex-wrap">
-              <input type="date" value={customStart} max={asOfDate} onChange={e => setCustomStart(e.target.value)}
-                className="text-xs border border-[var(--color-border)] rounded-lg px-3 py-1.5 bg-white" />
+              <input type="date" lang="en-GB" value={customStart} max={asOfDate} onChange={e => setCustomStart(e.target.value)}
+                className="text-xs border border-[var(--color-border)] rounded-lg px-3 py-1.5 bg-[var(--color-surface)]" />
               <span className="text-[var(--color-muted)] text-xs">→</span>
-              <input type="date" value={customEnd} max={asOfDate} onChange={e => setCustomEnd(e.target.value)}
-                className="text-xs border border-[var(--color-border)] rounded-lg px-3 py-1.5 bg-white" />
+              <input type="date" lang="en-GB" value={customEnd} max={asOfDate} onChange={e => setCustomEnd(e.target.value)}
+                className="text-xs border border-[var(--color-border)] rounded-lg px-3 py-1.5 bg-[var(--color-surface)]" />
             </div>
           )}
         </div>
@@ -248,7 +248,7 @@ export function FilteredTrendSection({ sales, asOfDate, allChannels, title = 'Sa
                 className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
                   selectedBrands.includes(b)
                     ? 'bg-[var(--color-sage)] text-white shadow-sm'
-                    : 'bg-white border border-[var(--color-border)] text-[var(--color-muted)] hover:border-[var(--color-sage)]'
+                    : 'bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-muted)] hover:border-[var(--color-sage)]'
                 }`}>{b}</button>
             ))}
           </div>
@@ -262,7 +262,7 @@ export function FilteredTrendSection({ sales, asOfDate, allChannels, title = 'Sa
                 className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
                   selectedChannels.includes(ch)
                     ? 'bg-[var(--color-smokeblue)] text-white shadow-sm'
-                    : 'bg-white border border-[var(--color-border)] text-[var(--color-muted)] hover:border-[var(--color-smokeblue)]'
+                    : 'bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-muted)] hover:border-[var(--color-smokeblue)]'
                 }`}>{ch === 'All' ? 'All' : ch}</button>
             ))}
           </div>

@@ -30,10 +30,14 @@ export function SalesSummaryCard({ sales, asOfDate, label, onBrandChange }: Prop
   const [customEnd, setCustomEnd] = useState('')
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const dropRef = useRef<HTMLDivElement>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
-      if (dropRef.current && !dropRef.current.contains(e.target as Node)) {
+      const target = e.target as Node
+      const insideButton = dropRef.current?.contains(target)
+      const insideMenu = menuRef.current?.contains(target)
+      if (!insideButton && !insideMenu) {
         setDropdownOpen(false)
       }
     }
@@ -46,7 +50,7 @@ export function SalesSummaryCard({ sales, asOfDate, label, onBrandChange }: Prop
     if (asOfDate) {
       const yesterday = addDays(asOfDate, -1)
       const ranges: Record<string, { start: string; end: string }> = {
-        thisMonth: { start: firstOfMonth(asOfDate), end: asOfDate },
+        thisMonth: { start: firstOfMonth(asOfDate), end: yesterday },
         today: { start: asOfDate, end: asOfDate },
         yesterday: { start: yesterday, end: yesterday },
         last7: { start: addDays(asOfDate, -7), end: asOfDate },
@@ -88,14 +92,14 @@ export function SalesSummaryCard({ sales, asOfDate, label, onBrandChange }: Prop
           <div className="relative" ref={dropRef} style={{ zIndex: 100 }}>
             <button
               onClick={() => setDropdownOpen(o => !o)}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl border border-[var(--color-border)] bg-white text-sm font-medium text-[var(--color-charcoal)] hover:border-[var(--color-sage)] transition-colors"
+              className="flex items-center gap-2 px-4 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-sm font-medium text-[var(--color-charcoal)] hover:border-[var(--color-sage)] transition-colors"
             >
               📅 {activeLabel}
               <ChevronDown size={14} className={`transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
             </button>
 
     {dropdownOpen && createPortal(
-              <div className="fixed bg-white border border-[var(--color-border)] rounded-xl shadow-xl w-44 overflow-hidden" style={{ zIndex: 9999, top: (dropRef.current?.getBoundingClientRect().bottom ?? 0) + 8, right: window.innerWidth - (dropRef.current?.getBoundingClientRect().right ?? 0) }}>
+              <div ref={menuRef} className="fixed bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl shadow-xl w-44 overflow-hidden" style={{ zIndex: 9999, top: (dropRef.current?.getBoundingClientRect().bottom ?? 0) + 8, right: window.innerWidth - (dropRef.current?.getBoundingClientRect().right ?? 0) }}>
                 {DATE_OPTIONS.map((opt) => (
                   <button key={opt.key}
                     onClick={() => { setDateKey(opt.key); setDropdownOpen(false) }}
@@ -108,20 +112,20 @@ export function SalesSummaryCard({ sales, asOfDate, label, onBrandChange }: Prop
                   </button>
                 ))}
               </div>,
-              document.body
+                            document.body
             )}
           </div>
 
           {/* Custom date inputs */}
           {dateKey === 'custom' && (
             <div className="flex items-center gap-2">
-              <input type="date" value={customStart} max={asOfDate}
+              <input type="date" lang="en-GB" value={customStart} max={asOfDate}
                 onChange={e => setCustomStart(e.target.value)}
-                className="text-xs border border-[var(--color-border)] rounded-lg px-2 py-1.5 bg-white" />
+                className="text-xs border border-[var(--color-border)] rounded-lg px-2 py-1.5 bg-[var(--color-surface)]" />
               <span className="text-xs text-[var(--color-muted)]">→</span>
-              <input type="date" value={customEnd} max={asOfDate}
+              <input type="date" lang="en-GB" value={customEnd} max={asOfDate}
                 onChange={e => setCustomEnd(e.target.value)}
-                className="text-xs border border-[var(--color-border)] rounded-lg px-2 py-1.5 bg-white" />
+                className="text-xs border border-[var(--color-border)] rounded-lg px-2 py-1.5 bg-[var(--color-surface)]" />
             </div>
           )}
 
@@ -134,7 +138,7 @@ export function SalesSummaryCard({ sales, asOfDate, label, onBrandChange }: Prop
                   className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
                     brand === b
                       ? 'bg-[var(--color-sage)] text-white shadow-sm scale-105'
-                      : 'bg-white border border-[var(--color-border)] text-[var(--color-muted)] hover:border-[var(--color-sage)]'
+                      : 'bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-muted)] hover:border-[var(--color-sage)]'
                   }`}>
                   {b === 'All' ? '🏷️ All' : b === 'Cocoon Care' ? '🌿 Cocoon' : '🐻 Boo Boo'}
                 </button>
