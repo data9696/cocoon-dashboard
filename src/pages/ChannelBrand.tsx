@@ -123,7 +123,7 @@ export function ChannelBrand() {
   const summaryOrders = new Set(summarySales.map((s) => s.channelOrderId).filter(Boolean)).size
 
   const rangeSales = useMemo(() => {
-    let filtered = filterSales(sales, { start: monthStart, end: asOfDate })
+  let filtered = filterSales(sales, { start: monthStart, end: monthOverMonthWindows(asOfDate).current.end })
     if (!selectedBrands.includes('All')) filtered = filtered.filter((s) => selectedBrands.includes(s.brand))
     if (!selectedChannels.includes('All')) filtered = filtered.filter((s) => selectedChannels.includes(s.channel))
     return filtered

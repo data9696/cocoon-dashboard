@@ -3,7 +3,11 @@ import type { ReactNode } from 'react'
 import { fetchAllSales, fetchAllStock } from './queries'
 import { latestDateWithData } from './aggregations'
 import { todayIST } from './dateLogic'
+import { getCached, setCached, clearCached } from './cache'
 import type { NormalizedSale, StockSnapshot } from '../types'
+
+const SALES_CACHE_KEY = 'cache_sales_v1'
+const STOCK_CACHE_KEY = 'cache_stock_v1'
 
 interface DataContextValue {
   sales: NormalizedSale[]
@@ -30,7 +34,24 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let cancelled = false
-    setLoading(true)
+    const isManualRefresh = reloadKey > 0
+
+    if (isManualRefresh) {
+      clearCached(SALES_CACHE_KEY)
+      clearCached(STOCK_CACHE_KEY)
+      setLoading(true)
+    } else {
+      const cachedSales = getCached<NormalizedSale[]>(SALES_CACHE_KEY)
+      const cachedStock = getCached<StockSnapshot[]>(STOCK_CACHE_KEY)
+      if (cachedSales && cachedStock) {
+        setSales(cachedSales)
+        setStock(cachedStock)
+        setLoading(false)
+      } else {
+        setLoading(true)
+      }
+    }
+
     setError(null)
 
     Promise.all([fetchAllSales(), fetchAllStock()])
@@ -39,6 +60,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
         setSales(salesData)
         setStock(stockData)
         setLastSyncedAt(new Date())
+        setCached(SALES_CACHE_KEY, salesData)
+        setCached(STOCK_CACHE_KEY, stockData)
       })
       .catch((err) => {
         if (cancelled) return
