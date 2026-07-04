@@ -2,8 +2,9 @@ import { supabase } from './supabaseClient'
 import { brandFromListingSku } from './brand'
 import type { NormalizedSale, RawOrderItem, StockSnapshot } from '../types'
 import { unixToISTDateString, unixToISTHour } from './dateLogic'
+import { isValidSaleStatus } from './status'
 
-const PAGE_SIZE = 1000
+const PAGE_SIZE = 5000
 
 /** Pull every row from order_items (paginated) and normalize into a clean shape for the dashboard. */
 export async function fetchAllSales(): Promise<NormalizedSale[]> {
@@ -17,6 +18,7 @@ export async function fetchAllSales(): Promise<NormalizedSale[]> {
       .select(
         'id, order_date, channel, company, sku_code, listing_sku, qty, selling_price_per_item, invoice_amount, status, channel_order_id'
       )
+      .order('id', { ascending: true })
       .range(from, from + PAGE_SIZE - 1)
 
     if (error) throw error
@@ -26,19 +28,20 @@ export async function fetchAllSales(): Promise<NormalizedSale[]> {
     }
 
     for (const row of data as RawOrderItem[]) {
+      if (!isValidSaleStatus(row.status || '')) continue
       results.push({
-  date: unixToISTDateString(row.order_date),
-  hour: unixToISTHour(row.order_date),
-  channel: row.company && row.channel ? `${row.company} - ${row.channel}` : row.channel || 'Unknown',
-  brand: brandFromListingSku(row.listing_sku),
-  skuCode: row.sku_code || '',
-  listingSku: row.listing_sku || '',
-  qty: Number(row.qty) || 0,
-  sellingPricePerItem: Number(row.selling_price_per_item) || 0,
-  invoiceAmount: Number(row.invoice_amount) || 0,
-  status: row.status || '',
-  channelOrderId: row.channel_order_id || '',
-})
+        date: unixToISTDateString(row.order_date),
+        hour: unixToISTHour(row.order_date),
+        channel: row.company && row.channel ? `${row.company} - ${row.channel}` : row.channel || 'Unknown',
+        brand: brandFromListingSku(row.listing_sku),
+        skuCode: row.sku_code || '',
+        listingSku: row.listing_sku || '',
+        qty: Number(row.qty) || 0,
+        sellingPricePerItem: Number(row.selling_price_per_item) || 0,
+        invoiceAmount: Number(row.invoice_amount) || 0,
+        status: row.status || '',
+        channelOrderId: row.channel_order_id || '',
+      })
     }
 
     if (data.length < PAGE_SIZE) {

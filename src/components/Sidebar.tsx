@@ -1,13 +1,14 @@
 import { useState } from 'react'
 import { NavLink } from 'react-router-dom'
 import clsx from 'clsx'
-import { LayoutDashboard, BarChart3, Store, Package, Menu, X, User } from 'lucide-react'
+import { LayoutDashboard, BarChart3, Store, Package, Boxes, Menu, X, User } from 'lucide-react'
 
 const NAV_ITEMS = [
   { to: '/', label: 'Home', icon: LayoutDashboard },
   { to: '/overview', label: 'Sales Overview', icon: BarChart3 },
   { to: '/channel-brand', label: 'Channel & Brand', icon: Store },
   { to: '/products', label: 'Product & Stock', icon: Package },
+  { to: '/inventory', label: 'Inventory', icon: Boxes },
 ]
 
 export function Sidebar() {

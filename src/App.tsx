@@ -6,6 +6,7 @@ import { Home } from './pages/Home'
 import { SalesOverview } from './pages/SalesOverview'
 import { ChannelBrand } from './pages/ChannelBrand'
 import { ProductAnalysis } from './pages/ProductAnalysis'
+import { Inventory } from './pages/Inventory'
 
 function AppShell() {
   const { loading } = useData()
@@ -18,6 +19,7 @@ function AppShell() {
       <Sidebar />
       <main className="flex-1 min-w-0 overflow-x-hidden">
         <Routes>
+          <Route path="/inventory" element={<Inventory />} />
           <Route path="/" element={<Home />} />
           <Route path="/overview" element={<SalesOverview />} />
           <Route path="/channel-brand" element={<ChannelBrand />} />

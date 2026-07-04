@@ -16,7 +16,7 @@ export function WoWComparison({ sales, asOfDate, brandFilter = 'All' }: Props) {
   const { currentLabel, priorLabel, currentTotal, priorTotal, diff, pct, yesterdayDayName } = useMemo(() => {
     // Always compare up to yesterday, not today
     const yesterday = addDays(asOfDate, -1)
-    const windows = weekOverWeekWindows(yesterday)
+    const windows =weekOverWeekWindows(asOfDate)
 
     let currentSales = filterSales(sales, windows.current)
     let priorSales = filterSales(sales, windows.prior)

@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { fetchAllSales, fetchAllStock } from './queries'
 import { latestDateWithData } from './aggregations'
+import { todayIST } from './dateLogic'
 import type { NormalizedSale, StockSnapshot } from '../types'
 
 interface DataContextValue {
@@ -50,8 +51,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   }, [reloadKey])
 
   const trueLatestDate = useMemo(() => latestDateWithData(sales), [sales])
-  const asOfDate = asOfOverride || trueLatestDate
-
+  const asOfDate = asOfOverride || todayIST()
   const value: DataContextValue = {
     sales,
     stock,

@@ -87,11 +87,19 @@
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
   }
   html.dark .card:hover,
-  html.dark .card:active {
-    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.4);
-  }
-  html.dark .logo-card,
-  html.dark .logo-card-sm {
+html.dark .card:active {
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.4);
+}
+
+.card.no-hover-lift:hover,
+.card.no-hover-lift:active {
+  transform: none;
+  box-shadow: 0 1px 3px rgba(58, 56, 53, 0.04);
+  z-index: auto;
+}
+
+html.dark .logo-card,
+html.dark .logo-card-sm {
     background: #2e2c28;
   }
   html.dark aside {

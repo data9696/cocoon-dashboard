@@ -1,35 +1,32 @@
-// Core date-comparison engine.
-// Implements the rules from Sales_Dashboard_Logic_Summary.md:
-//  - all timestamps are unix seconds -> convert to IST calendar date (no time component)
-//  - "today" = latest date in data, or a user-picked "as of" date
-//  - week = Monday-Sunday
-//  - WoW / MoM always compare an EQUAL number of days (never partial vs full)
+const IST_OFFSET_MIN = 5 * 60 + 30
 
-const IST_OFFSET_MIN = 5 * 60 + 30 // IST = UTC+5:30
-
-/** Convert a raw OMS Guru unix-seconds timestamp into a calendar date string (YYYY-MM-DD) in IST. */
-export function unixToISTDateString(unixSeconds: number | string): string {
-  const seconds =
-    typeof unixSeconds === 'string' ? parseInt(unixSeconds, 10) : unixSeconds
-  if (!seconds || Number.isNaN(seconds)) return ''
-  const utcMs = seconds * 1000
-  const istMs = utcMs + IST_OFFSET_MIN * 60 * 1000
-  const d = new Date(istMs)
-  // Use the UTC getters since we've already shifted the clock by the IST offset manually.
+/** Real current calendar date in IST, independent of what's in the sales data. */
+export function todayIST(): string {
+  const nowMs = Date.now() + IST_OFFSET_MIN * 60 * 1000
+  const d = new Date(nowMs)
   const y = d.getUTCFullYear()
   const m = String(d.getUTCMonth() + 1).padStart(2, '0')
   const day = String(d.getUTCDate()).padStart(2, '0')
   return `${y}-${m}-${day}`
 }
-/** Extract the IST hour (0-23) from a unix-seconds timestamp. */
+
+export function unixToISTDateString(unixSeconds: number | string): string {
+  const seconds = typeof unixSeconds === 'string' ? parseInt(unixSeconds, 10) : unixSeconds
+  if (!seconds || Number.isNaN(seconds)) return ''
+  const istMs = seconds * 1000 + IST_OFFSET_MIN * 60 * 1000
+  const d = new Date(istMs)
+  const y = d.getUTCFullYear()
+  const m = String(d.getUTCMonth() + 1).padStart(2, '0')
+  const day = String(d.getUTCDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
 export function unixToISTHour(unixSeconds: number | string): number {
-  const seconds =
-    typeof unixSeconds === 'string' ? parseInt(unixSeconds, 10) : unixSeconds
+  const seconds = typeof unixSeconds === 'string' ? parseInt(unixSeconds, 10) : unixSeconds
   if (!seconds || Number.isNaN(seconds)) return 0
   const istMs = seconds * 1000 + IST_OFFSET_MIN * 60 * 1000
   return new Date(istMs).getUTCHours()
 }
-
 
 export function parseDateString(dateStr: string): Date {
   const [y, m, d] = dateStr.split('-').map(Number)
@@ -49,13 +46,11 @@ export function addDays(dateStr: string, days: number): string {
   return toDateString(d)
 }
 
-/** JS getDay(): 0=Sun..6=Sat. We want Monday=0..Sunday=6 per the brand's week definition. */
 function mondayIndex(d: Date): number {
   const day = d.getDay()
   return day === 0 ? 6 : day - 1
 }
 
-/** Monday of the week containing dateStr. */
 export function mondayOfWeek(dateStr: string): string {
   const d = parseDateString(dateStr)
   const idx = mondayIndex(d)
@@ -77,7 +72,6 @@ function daysInMonth(year: number, monthIndex0: number): number {
   return new Date(year, monthIndex0 + 1, 0).getDate()
 }
 
-/** Same calendar date one month earlier, capped to that month's last valid day. */
 export function sameDayPrevMonth(dateStr: string): string {
   const d = parseDateString(dateStr)
   const targetMonth = d.getMonth() - 1
@@ -97,7 +91,6 @@ export interface ComparisonWindows {
   prior: PeriodWindow
 }
 
-/** Day-over-Day: today vs yesterday (single-day windows). */
 export function dayOverDayWindows(asOf: string): ComparisonWindows {
   const yesterday = addDays(asOf, -1)
   return {
@@ -107,30 +100,32 @@ export function dayOverDayWindows(asOf: string): ComparisonWindows {
 }
 
 /**
- * Week-to-Date / Week-over-Week.
- * Current: Monday of this week -> asOf.
- * Prior: Monday of last week -> same weekday offset (equal day count), NOT the full prior week.
+ * Week-over-Week:
+ * Current = Monday of this week → yesterday (excludes today, still syncing)
+ * Prior   = Monday last week → same number of days
  */
 export function weekOverWeekWindows(asOf: string): ComparisonWindows {
+  const yesterday = addDays(asOf, -1)
   const thisMonday = mondayOfWeek(asOf)
-  const dayOffset = Math.round(
-    (parseDateString(asOf).getTime() - parseDateString(thisMonday).getTime()) /
-      (1000 * 60 * 60 * 24)
+  const currentEnd = yesterday >= thisMonday ? yesterday : asOf
+  const daysElapsed = Math.round(
+    (parseDateString(currentEnd).getTime() - parseDateString(thisMonday).getTime()) /
+    (1000 * 60 * 60 * 24)
   )
   const lastMonday = addDays(thisMonday, -7)
-  const lastWeekSamePoint = addDays(lastMonday, dayOffset)
+  const lastWeekEnd = addDays(lastMonday, daysElapsed)
   return {
-    current: { start: thisMonday, end: asOf },
-    prior: { start: lastMonday, end: lastWeekSamePoint },
+    current: { start: thisMonday, end: currentEnd },
+    prior: { start: lastMonday, end: lastWeekEnd },
   }
 }
 
 /**
- * Month-to-Date / Month-over-Month.
- * Current: 1st of this month -> asOf.
- * Prior: 1st of last month -> same day-number (capped to last valid day of that month).
+ * Month-to-Month (MTM):
+ * Current = 1st of this month → yesterday (excludes today, which may still be syncing)
+ * Prior   = 1st of last month → same day-number last month (equal day range)
  */
-  export function monthOverMonthWindows(asOf: string): ComparisonWindows {
+export function monthOverMonthWindows(asOf: string): ComparisonWindows {
   const yesterday = addDays(asOf, -1)
   const thisFirst = firstOfMonth(asOf)
   const currentEnd = yesterday >= thisFirst ? yesterday : asOf
@@ -142,37 +137,27 @@ export function weekOverWeekWindows(asOf: string): ComparisonWindows {
   }
 }
 
-/** Year-to-Date: Jan 1 -> asOf. No prior-year comparison defined yet (per logic doc). */
 export function yearToDateWindow(asOf: string): PeriodWindow {
   return { start: firstOfYear(asOf), end: asOf }
 }
-/** Format a YYYY-MM-DD date string as "12 June 2026" for display throughout the UI. */
+
 export function formatDisplayDate(dateStr: string): string {
   if (!dateStr) return '—'
   const d = parseDateString(dateStr)
   return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
 }
 
-/** Shorter form, "12 Jun", used where space is tight (chart axis ticks). */
 export function formatShortDate(dateStr: string): string {
   if (!dateStr) return ''
   const d = parseDateString(dateStr)
   return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
 }
+
 export function pctChange(current: number, prior: number): number | null {
-  if (prior === 0) return current === 0 ? 0 : null // avoid divide-by-zero; null = "n/a"
+  if (prior === 0) return current === 0 ? 0 : null
   return ((current - prior) / prior) * 100
 }
 
-/** Run rate: month-to-date sales projected across the full month, based on days elapsed so far. */
-export function runRate(monthToDateSales: number, asOf: string): number {
-  const d = parseDateString(asOf)
-  const elapsedDays = d.getDate()
-  const totalDays = daysInMonth(d.getFullYear(), d.getMonth())
-  if (elapsedDays === 0) return 0
-  return (monthToDateSales / elapsedDays) * totalDays
-}
-/** Run Rate = units sold per day over last N days. */
 export function runRateUnitsPerDay(
   sales: { date: string; qty: number }[],
   asOf: string,
@@ -184,33 +169,33 @@ export function runRateUnitsPerDay(
   return totalUnits / windowDays
 }
 
-/** Stock cover in days = current stock ÷ run rate. */
 export function stockCoverDays(currentStock: number, runRate: number): number {
   if (runRate === 0) return Infinity
   return currentStock / runRate
 }
 
-/** Estimated requirement = run rate × future days. */
 export function estimatedRequirement(runRate: number, futureDays: number): number {
   return runRate * futureDays
 }
 
-/** Gap = current stock - estimated requirement. Negative = reorder needed. */
 export function stockGap(currentStock: number, runRate: number, futureDays: number): number {
   return currentStock - estimatedRequirement(runRate, futureDays)
 }
 
-/**
- * Weighted Run Rate = (30d × 17%) + (15d × 33%) + (7d × 50%)
- * More recent windows get higher weight since they better reflect current pace.
- */
 export function weightedRunRate(
   sales: { date: string; qty: number }[],
   asOf: string
 ): number {
-  const rr7  = runRateUnitsPerDay(sales, asOf, 7)
+  const rr7 = runRateUnitsPerDay(sales, asOf, 7)
   const rr15 = runRateUnitsPerDay(sales, asOf, 15)
   const rr30 = runRateUnitsPerDay(sales, asOf, 30)
   return (rr30 * 0.17) + (rr15 * 0.33) + (rr7 * 0.50)
 }
 
+export function runRate(monthToDateSales: number, asOf: string): number {
+  const d = parseDateString(asOf)
+  const elapsedDays = d.getDate()
+  const totalDays = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate()
+  if (elapsedDays === 0) return 0
+  return (monthToDateSales / elapsedDays) * totalDays
+}
