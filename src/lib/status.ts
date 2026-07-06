@@ -1,29 +1,19 @@
 // Centralized rules for which order statuses count as real sales.
-// Any status NOT in VALID_SALE_STATUSES is excluded from every total,
-// chart, KPI, and comparison across the dashboard.
-
-export const VALID_SALE_STATUSES = new Set<string>([
-  'Shipped',
-  'In Transit',
-  'Packed',
-  'Delivered',
-  'Ready to ship',
-  'Return Rejected',
-])
+// Approach: exclude cancel/return-related statuses; count everything else
+// (including New, Pending, Ready to ship, Shipped, Delivered, etc.).
 
 export const EXCLUDED_SALE_STATUSES = new Set<string>([
-  'New',
   'Cancelled',
   'Cancelled Before Shipping',
   'Cancel Init',
   'Return Init',
   'Return Received',
   'Cancelled Return Received',
-  'Partial Return Received',
   'Partial Cancelled Return Received',
+  'Partial Return Received',
 ])
 
-/** True if a row's status should be counted as a real, valid sale. */
+/** True if a row's status should be counted as a real sale (i.e. not a cancellation/return). */
 export function isValidSaleStatus(status: string): boolean {
-  return VALID_SALE_STATUSES.has(status)
+  return !EXCLUDED_SALE_STATUSES.has(status)
 }

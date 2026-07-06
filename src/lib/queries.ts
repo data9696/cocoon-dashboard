@@ -2,6 +2,7 @@ import { supabase } from './supabaseClient'
 import { brandFromListingSku } from './brand'
 import type { NormalizedSale, RawOrderItem, StockSnapshot } from '../types'
 import { unixToISTDateString, unixToISTHour } from './dateLogic'
+import { isValidSaleStatus } from './status'
 
 const PAGE_SIZE = 5000
 const IST_OFFSET_MIN = 5 * 60 + 30
@@ -14,7 +15,7 @@ function startOfYearEpoch(): string {
   return Math.floor(jan1Utc / 1000).toString()
 }
 
-/** Epoch-seconds cutoff N days back from now, IST-based. Used to window stock snapshot history. */
+/** IST date string N days back from now. Used to window stock snapshot history. */
 function daysAgoDateString(days: number): string {
   const nowIST = new Date(Date.now() + IST_OFFSET_MIN * 60 * 1000)
   nowIST.setUTCDate(nowIST.getUTCDate() - days)
@@ -41,42 +42,41 @@ function normalizeSaleRow(row: RawOrderItem): NormalizedSale {
 }
 
 /**
- * Pull this year's order_items (paginated in parallel) and normalize into a clean shape.
+ * Pull this year's order_items (sequential pagination) and normalize into a clean shape.
  * Windowed to Jan 1 of current year onward — covers YTD and everything the dashboard displays,
  * while avoiding downloading the entire multi-year table on every load.
  */
 export async function fetchAllSales(): Promise<NormalizedSale[]> {
   const cutoff = startOfYearEpoch()
-  const SELECT_COLS =
-    'id, order_date, channel, company, sku_code, listing_sku, qty, selling_price_per_item, invoice_amount, status, channel_order_id'
+  const results: NormalizedSale[] = []
+  let from = 0
+  let keepGoing = true
 
-  const { count, error: countError } = await supabase
-    .from('order_items')
-    .select('id', { count: 'exact', head: true })
-    .gte('order_date', cutoff)
-
-  if (countError) throw countError
-  const total = count || 0
-  if (total === 0) return []
-
-  const pageCount = Math.ceil(total / PAGE_SIZE)
-  const pagePromises = Array.from({ length: pageCount }, (_, i) => {
-    const from = i * PAGE_SIZE
-    return supabase
+  while (keepGoing) {
+    const { data, error } = await supabase
       .from('order_items')
-      .select(SELECT_COLS)
+      .select(
+        'id, order_date, channel, company, sku_code, listing_sku, qty, selling_price_per_item, invoice_amount, status, channel_order_id'
+      )
       .gte('order_date', cutoff)
       .order('id', { ascending: true })
       .range(from, from + PAGE_SIZE - 1)
-  })
 
-  const pageResults = await Promise.all(pagePromises)
-
-  const results: NormalizedSale[] = []
-  for (const { data, error } of pageResults) {
     if (error) throw error
-    for (const row of (data as RawOrderItem[]) || []) {
-      results.push(normalizeSaleRow(row))
+    if (!data || data.length === 0) {
+      keepGoing = false
+      break
+    }
+
+    for (const row of data as RawOrderItem[]) {
+  if (!isValidSaleStatus(row.status || '')) continue
+  results.push(normalizeSaleRow(row))
+    }
+
+    if (data.length < PAGE_SIZE) {
+      keepGoing = false
+    } else {
+      from += PAGE_SIZE
     }
   }
 
@@ -84,39 +84,37 @@ export async function fetchAllSales(): Promise<NormalizedSale[]> {
 }
 
 /**
- * Pull stock snapshots (paginated in parallel), windowed to the last 45 days —
+ * Pull stock snapshots (sequential pagination), windowed to the last 45 days —
  * enough for the Inventory trend chart and latest-snapshot table, without pulling
  * the full historical snapshot archive on every load.
  */
 export async function fetchAllStock(): Promise<StockSnapshot[]> {
   const cutoffDate = daysAgoDateString(45)
+  const results: StockSnapshot[] = []
+  let from = 0
+  let keepGoing = true
 
-  const { count, error: countError } = await supabase
-    .from('stock_snapshots')
-    .select('id', { count: 'exact', head: true })
-    .gte('snapshot_date', cutoffDate)
-
-  if (countError) throw countError
-  const total = count || 0
-  if (total === 0) return []
-
-  const pageCount = Math.ceil(total / PAGE_SIZE)
-  const pagePromises = Array.from({ length: pageCount }, (_, i) => {
-    const from = i * PAGE_SIZE
-    return supabase
+  while (keepGoing) {
+    const { data, error } = await supabase
       .from('stock_snapshots')
       .select('*')
       .gte('snapshot_date', cutoffDate)
       .order('snapshot_date', { ascending: false })
       .range(from, from + PAGE_SIZE - 1)
-  })
 
-  const pageResults = await Promise.all(pagePromises)
-
-  const results: StockSnapshot[] = []
-  for (const { data, error } of pageResults) {
     if (error) throw error
-    results.push(...((data as StockSnapshot[]) || []))
+    if (!data || data.length === 0) {
+      keepGoing = false
+      break
+    }
+
+    results.push(...(data as StockSnapshot[]))
+
+    if (data.length < PAGE_SIZE) {
+      keepGoing = false
+    } else {
+      from += PAGE_SIZE
+    }
   }
 
   return results
