@@ -107,7 +107,22 @@ export function dayOverDayWindows(asOf: string): ComparisonWindows {
 export function weekOverWeekWindows(asOf: string): ComparisonWindows {
   const yesterday = addDays(asOf, -1)
   const thisMonday = mondayOfWeek(asOf)
-  const currentEnd = yesterday >= thisMonday ? yesterday : asOf
+
+  if (yesterday < thisMonday) {
+    // asOf is a Monday — nothing from "this week" has happened yet, so show
+    // the just-completed full week (last Mon–Sun) as "current" instead of
+    // a near-empty single-day window.
+    const currentStart = addDays(thisMonday, -7)
+    const currentEnd = addDays(thisMonday, -1)
+    const priorStart = addDays(currentStart, -7)
+    const priorEnd = addDays(currentEnd, -7)
+    return {
+      current: { start: currentStart, end: currentEnd },
+      prior: { start: priorStart, end: priorEnd },
+    }
+  }
+
+  const currentEnd = yesterday
   const daysElapsed = Math.round(
     (parseDateString(currentEnd).getTime() - parseDateString(thisMonday).getTime()) /
     (1000 * 60 * 60 * 24)
@@ -118,8 +133,8 @@ export function weekOverWeekWindows(asOf: string): ComparisonWindows {
     current: { start: thisMonday, end: currentEnd },
     prior: { start: lastMonday, end: lastWeekEnd },
   }
+ 
 }
-
 /**
  * Month-to-Month (MTM):
  * Current = 1st of this month → yesterday (excludes today, which may still be syncing)
