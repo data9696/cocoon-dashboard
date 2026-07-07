@@ -1,7 +1,13 @@
+import { useState } from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { DataProvider, useData } from './lib/DataContext'
+import { AuthProvider, useAuth } from './lib/AuthContext'
 import { Sidebar } from './components/Sidebar'
 import { LoadingScreen } from './components/LoadingScreen'
+import { Login } from './pages/Login'
+import { Signup } from './pages/Signup'
+import { PendingApproval } from './pages/PendingApproval'
+import { AdminPage } from './pages/AdminPage'
 import { Home } from './pages/Home'
 import { SalesOverview } from './pages/SalesOverview'
 import { ChannelBrand } from './pages/ChannelBrand'
@@ -11,7 +17,6 @@ import { Inventory } from './pages/Inventory'
 function AppShell() {
   const { loading } = useData()
 
-  // Show branded loading screen on very first load (no data yet)
   if (loading) return <LoadingScreen />
 
   return (
@@ -24,19 +29,45 @@ function AppShell() {
           <Route path="/overview" element={<SalesOverview />} />
           <Route path="/channel-brand" element={<ChannelBrand />} />
           <Route path="/products" element={<ProductAnalysis />} />
+          <Route path="/admin" element={<AdminPage />} />
         </Routes>
       </main>
     </div>
   )
 }
 
-function App() {
+function AuthGate() {
+  const { session, profile, loading } = useAuth()
+  const [authView, setAuthView] = useState<'login' | 'signup'>('login')
+
+  if (loading) return <LoadingScreen />
+
+  if (!session) {
+    return authView === 'login' ? (
+      <Login onSwitchToSignup={() => setAuthView('signup')} />
+    ) : (
+      <Signup onSwitchToLogin={() => setAuthView('login')} />
+    )
+  }
+
+  if (!profile || profile.status !== 'approved') {
+    return <PendingApproval />
+  }
+
   return (
     <DataProvider>
       <BrowserRouter>
         <AppShell />
       </BrowserRouter>
     </DataProvider>
+  )
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <AuthGate />
+    </AuthProvider>
   )
 }
 

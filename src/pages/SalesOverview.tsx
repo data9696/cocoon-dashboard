@@ -9,6 +9,7 @@ import { Reveal } from '../components/Reveal'
 import { MTMComparison } from '../components/MTMComparison'
 import { WoWComparison } from '../components/WoWComparison'
 import { SalesSummaryCard } from '../components/SalesSummaryCard'
+import { AvgSellingPriceCard } from '../components/AvgSellingPriceCard'
 import {
   dayOverDayWindows,
   weekOverWeekWindows,
@@ -30,7 +31,7 @@ import {
 const inr = (n: number) => '₹' + Math.round(n).toLocaleString('en-IN')
 
 export function SalesOverview() {
-  const { sales, asOfDate } = useData()
+  const { sales, asOfDate, skuStyleMap } = useData()
   const [overviewBrandFilter, setOverviewBrandFilter] = useState('All')
 
   const dod = useMemo(() => buildMetricSummary(sales, dayOverDayWindows(asOfDate)), [sales, asOfDate])
@@ -117,7 +118,16 @@ export function SalesOverview() {
           onBrandChange={setOverviewBrandFilter}
         />
       </Reveal>
-
+      <Reveal delay={102}>
+   <div className="mb-6">
+    <AvgSellingPriceCard
+      sales={sales}
+      skuStyleMap={skuStyleMap}
+      asOfDate={asOfDate}
+    />
+   </div>
+   
+      </Reveal>
       {/* MTM + WoW side by side */}
       <Reveal delay={105}>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">

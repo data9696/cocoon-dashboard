@@ -45,3 +45,11 @@ export interface MetricSummary {
   changeAmount: number
   changePct: number | null
 }
+
+export interface SkuStyleMap {
+  sku_code: string
+  style_name?: string | null
+  listing_sku?: string | null
+  style?: string | null
+  category?: string | null
+}

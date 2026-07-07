@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { NavLink } from 'react-router-dom'
 import clsx from 'clsx'
-import { LayoutDashboard, BarChart3, Store, Package, Boxes, Menu, X, User } from 'lucide-react'
+import { LayoutDashboard, BarChart3, Store, Package, Boxes, Menu, X, LogOut, ShieldCheck } from 'lucide-react'
+import { useAuth } from '../lib/AuthContext'
 
 const NAV_ITEMS = [
   { to: '/', label: 'Home', icon: LayoutDashboard },
@@ -13,8 +14,9 @@ const NAV_ITEMS = [
 
 export function Sidebar() {
   const [mobileOpen, setMobileOpen] = useState(false)
-  const userName = localStorage.getItem('dashboard_user_name') || 'Team'
-  const initials = userName.slice(0, 2).toUpperCase()
+  const { profile, signOut } = useAuth()
+  const displayName = profile?.full_name || profile?.email || 'Team'
+  const initials = displayName.slice(0, 2).toUpperCase()
 
   const navContent = (
     <>
@@ -60,9 +62,27 @@ export function Sidebar() {
             </NavLink>
           )
         })}
+
+        {profile?.is_admin && (
+          <NavLink
+            to="/admin"
+            onClick={() => setMobileOpen(false)}
+            className={({ isActive }) =>
+              clsx(
+                'nav-item group flex items-center gap-3 px-4 py-4 rounded-xl text-base font-medium transition-colors',
+                isActive
+                  ? 'bg-[var(--color-sage-light)] text-[var(--color-sage-dark)] shadow-sm'
+                  : 'text-[var(--color-charcoal)] hover:bg-[var(--color-cream)]'
+              )
+            }
+          >
+            <ShieldCheck size={20} strokeWidth={2} className="transition-transform duration-200 group-hover:scale-110" />
+            Admin
+          </NavLink>
+        )}
       </nav>
 
-      {/* User Profile — #14 */}
+      {/* User Profile */}
       <div className="px-4 py-4 border-t border-[var(--color-border)]">
         <div className="flex items-center gap-3 px-3 py-3 rounded-xl bg-[var(--color-cream)]">
           <div
@@ -72,10 +92,12 @@ export function Sidebar() {
             {initials}
           </div>
           <div className="flex-1 min-w-0">
-            <div className="text-sm font-medium text-[var(--color-charcoal)] truncate">{userName}</div>
+            <div className="text-sm font-medium text-[var(--color-charcoal)] truncate">{displayName}</div>
             <div className="text-[11px] text-[var(--color-muted)]">Sales Team</div>
           </div>
-          <User size={14} className="text-[var(--color-muted)] shrink-0" />
+          <button onClick={() => signOut()} title="Sign out" className="text-[var(--color-muted)] hover:text-[#dc2626] shrink-0">
+            <LogOut size={16} />
+          </button>
         </div>
         <div className="text-[11px] text-[var(--color-muted)] text-center mt-2">
           Data synced every 2 hours
@@ -87,7 +109,7 @@ export function Sidebar() {
   return (
     <>
       <button
-        className="md:hidden fixed top-4 left-4 z-50 w-10 h-10 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)] flex items-center justify-center shadow-md"
+        className="md:hidden fixed top-4 left-4 z-50 w-10 h-10 rounded-xl bg-white border border-[var(--color-border)] flex items-center justify-center shadow-md"
         onClick={() => setMobileOpen(true)}
       >
         <Menu size={20} className="text-[var(--color-charcoal)]" />
@@ -102,7 +124,7 @@ export function Sidebar() {
 
       <aside
         className={clsx(
-          'fixed top-0 left-0 h-full z-50 flex flex-col bg-[var(--color-surface)] sidebar-panel transition-transform duration-300',
+          'fixed top-0 left-0 h-full z-50 flex flex-col bg-white sidebar-panel transition-transform duration-300',
           'w-72 md:w-64',
           'md:sticky md:translate-x-0 md:shrink-0 md:h-screen md:flex',
           mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'

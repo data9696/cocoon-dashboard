@@ -69,13 +69,12 @@ export function Home() {
     [sales, asOfDate]
   )
 
-  // Full month sales (1st to today)
   const monthTotalSales = useMemo(() => {
-  const { start, end } = monthOverMonthWindows(asOfDate).current
-  return sales
-    .filter((s) => s.date >= start && s.date <= end)
-    .reduce((a, s) => a + s.invoiceAmount, 0)
-}, [sales, asOfDate])
+    const { start, end } = monthOverMonthWindows(asOfDate).current
+    return sales
+      .filter((s) => s.date >= start && s.date <= end)
+      .reduce((a, s) => a + s.invoiceAmount, 0)
+  }, [sales, asOfDate])
 
   const trend = useMemo(() => {
     const since = addDays(asOfDate || trueLatestDate, -30)
@@ -106,7 +105,6 @@ export function Home() {
   )
   const channelTotal = byChannel.reduce((acc, c) => acc + c.sales, 0)
 
-  // Pre-computed date labels
   const todayLabel = formatDisplayDate(asOfDate)
   const yesterdayLabel = formatDisplayDate(addDays(asOfDate, -1))
   const wtdWindows = weekOverWeekWindows(asOfDate)
@@ -116,7 +114,6 @@ export function Home() {
 
   return (
     <PageLayout title="Welcome back" subtitle="Cocoon Care & The Boo Boo Club">
-      {/* KPI Cards */}
       <Reveal>
         <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-8">
           <MetricCard icon={ShoppingBag} label="Today" value={inr(dod.current)} rawValue={dod.current} changePct={dod.changePct} changeAmount={dod.changeAmount} accent="sage" sparkline={sparklineValues} dateLabel={todayLabel} />
@@ -128,57 +125,38 @@ export function Home() {
         </div>
       </Reveal>
 
-      {/* Total Sales Summary Card with Brand Filter */}
-      {/* Sales Summary Card */}
-<Reveal delay={90}>
-  <SalesSummaryCard
-    sales={sales}
-    asOfDate={asOfDate}
-    label="This Month"
-    onBrandChange={setHomeBrandFilter}
-  />
-</Reveal>
+      <Reveal delay={90}>
+        <SalesSummaryCard
+          sales={sales}
+          asOfDate={asOfDate}
+          label="This Month"
+          onBrandChange={setHomeBrandFilter}
+        />
+      </Reveal>
 
-{/* MTM + WoW + Target */}
-<Reveal delay={95}>
-  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-    <MTMComparison
-      sales={sales}
-      asOfDate={asOfDate}
-      brandFilter={homeBrandFilter}
-    />
+      <Reveal delay={95}>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <MTMComparison sales={sales} asOfDate={asOfDate} brandFilter={homeBrandFilter} />
+          <WoWComparison sales={sales} asOfDate={asOfDate} brandFilter={homeBrandFilter} />
+          <TargetProgress current={monthTotalSales} target={MONTHLY_TARGET} />
+        </div>
+      </Reveal>
 
-    <WoWComparison
-      sales={sales}
-      asOfDate={asOfDate}
-      brandFilter={homeBrandFilter}
-    />
+      <Reveal delay={100}>
+        <FilteredTrendSection
+          sales={sales}
+          asOfDate={asOfDate}
+          allChannels={Array.from(new Set(sales.map(s => s.channel))).sort()}
+          title="Sales Trend"
+        />
+      </Reveal>
 
-    <TargetProgress
-      current={monthTotalSales}
-      target={MONTHLY_TARGET}
-    />
-  </div>
-</Reveal>
-
-      {/* Trend Chart + MTM Comparison + Target Progress */}
-  <Reveal delay={100}>
-      <FilteredTrendSection
-    sales={sales}
-    asOfDate={asOfDate}
-     allChannels={Array.from(new Set(sales.map(s => s.channel))).sort()}
-      title="Sales Trend"
-      />
-  </Reveal>
-
-      {/* Calendar Heatmap */}
       <Reveal delay={130}>
         <div className="mb-8">
           <CalendarHeatmap sales={sales} asOf={asOfDate} weeks={12} />
         </div>
       </Reveal>
 
-      {/* Brand + Marketplace Share */}
       <Reveal delay={150}>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
           <div className="card p-5">
@@ -199,14 +177,12 @@ export function Home() {
         </div>
       </Reveal>
 
-      {/* Quick Insights */}
       <Reveal delay={200}>
         <div className="mb-8">
           <QuickInsights sales={monthSales} label="This Month" />
         </div>
       </Reveal>
 
-      {/* Nav Cards */}
       <Reveal delay={250}>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
           {NAV_ITEMS.map((t) => {

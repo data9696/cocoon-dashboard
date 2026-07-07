@@ -25,11 +25,21 @@ function daysAgoDateString(days: number): string {
   return `${y}-${m}-${d}`
 }
 
+function buildChannelLabel(company: string | null | undefined, channel: string | null | undefined): string {
+  const comp = (company || '').trim()
+  const ch = (channel || '').trim()
+  if (!ch) return comp || 'Unknown'
+  if (!comp) return ch
+  // Avoid double-prefixing if the raw channel value already starts with "F - " / "A - " etc.
+  if (ch.toUpperCase().startsWith(comp.toUpperCase() + ' - ')) return ch
+  return `${comp} - ${ch}`
+}
+
 function normalizeSaleRow(row: RawOrderItem): NormalizedSale {
   return {
     date: unixToISTDateString(row.order_date),
     hour: unixToISTHour(row.order_date),
-    channel: row.company && row.channel ? `${row.company} - ${row.channel}` : row.channel || 'Unknown',
+    channel: buildChannelLabel(row.company, row.channel),
     brand: brandFromListingSku(row.listing_sku),
     skuCode: row.sku_code || '',
     listingSku: row.listing_sku || '',
@@ -69,8 +79,8 @@ export async function fetchAllSales(): Promise<NormalizedSale[]> {
     }
 
     for (const row of data as RawOrderItem[]) {
-  if (!isValidSaleStatus(row.status || '')) continue
-  results.push(normalizeSaleRow(row))
+      if (!isValidSaleStatus(row.status || '')) continue
+      results.push(normalizeSaleRow(row))
     }
 
     if (data.length < PAGE_SIZE) {
@@ -118,4 +128,14 @@ export async function fetchAllStock(): Promise<StockSnapshot[]> {
   }
 
   return results
+}
+
+/** Fetch the SKU → style/category mapping table (small, no pagination needed). */
+export async function fetchSkuStyleMap(): Promise<import('../types').SkuStyleMap[]> {
+  const { data, error } = await supabase
+    .from('sku_style_map')
+    .select('sku_code, "Style_Name", listing_sku, style, category')
+
+  if (error) throw error
+  return (data as import('../types').SkuStyleMap[]) || []
 }
