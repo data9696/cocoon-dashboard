@@ -53,3 +53,12 @@ export interface SkuStyleMap {
   style?: string | null
   category?: string | null
 }
+
+export interface DailySummaryRow {
+  sale_date: string
+  brand: string
+  channel: string
+  total_sales: number
+  total_units: number
+  total_orders: number
+}
