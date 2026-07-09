@@ -25,6 +25,16 @@ function daysAgoDateString(days: number): string {
   return `${y}-${m}-${d}`
 }
 
+/** Epoch seconds for the start of today, IST midnight. */
+function startOfTodayEpoch(): string {
+  const nowIST = new Date(Date.now() + IST_OFFSET_MIN * 60 * 1000)
+  const y = nowIST.getUTCFullYear()
+  const m = nowIST.getUTCMonth()
+  const d = nowIST.getUTCDate()
+  const todayUtc = Date.UTC(y, m, d, 0, 0, 0) - IST_OFFSET_MIN * 60 * 1000
+  return Math.floor(todayUtc / 1000).toString()
+}
+
 function buildChannelLabel(company: string | null | undefined, channel: string | null | undefined): string {
   const comp = (company || '').trim()
   const ch = (channel || '').trim()
@@ -127,6 +137,35 @@ export async function fetchAllStock(): Promise<StockSnapshot[]> {
     }
   }
 
+  return results
+}
+
+/** Fetch the pre-aggregated daily sales summary table — small, fast, refreshed every 15 min by pg_cron. */
+export async function fetchDailySalesSummary(): Promise<import('../types').DailySummaryRow[]> {
+  const { data, error } = await supabase
+    .from('daily_sales_summary')
+    .select('sale_date, brand, channel, total_sales, total_units, total_orders')
+
+  if (error) throw error
+  return (data as import('../types').DailySummaryRow[]) || []
+}
+
+/** Fetch just today's raw order_items rows — small, always live, since the summary table doesn't include today. */
+export async function fetchTodaySales(): Promise<NormalizedSale[]> {
+  const todayStart = startOfTodayEpoch()
+  const { data, error } = await supabase
+    .from('order_items')
+    .select(
+      'id, order_date, channel, company, sku_code, listing_sku, qty, selling_price_per_item, invoice_amount, status, channel_order_id'
+    )
+    .gte('order_date', todayStart)
+
+  if (error) throw error
+  const results: NormalizedSale[] = []
+  for (const row of (data as RawOrderItem[]) || []) {
+    if (!isValidSaleStatus(row.status || '')) continue
+    results.push(normalizeSaleRow(row))
+  }
   return results
 }
 

@@ -8,18 +8,20 @@ import { QuickInsights } from '../components/QuickInsights'
 import { FilteredTrendSection } from '../components/FilteredTrendSection'
 import { Reveal } from '../components/Reveal'
 import {
-  weekOverWeekWindows,
-  monthOverMonthWindows,
   formatDisplayDate,
   firstOfMonth,
   addDays,
   toDateString,
 } from '../lib/dateLogic'
+import { filterSales } from '../lib/aggregations'
 import {
-  buildMetricSummary,
-  filterSales,
-  groupBy,
-} from '../lib/aggregations'
+  weekOverWeekFromSummary,
+  monthOverMonthFromSummary,
+  groupByBrandFromSummary,
+  groupByChannelFromSummary,
+  filterSummary,
+  sumSummary,
+} from '../lib/summaryAggregations'
 import { BRAND_COLORS } from '../lib/brand'
 
 const inr = (n: number) => '₹' + Math.round(n).toLocaleString('en-IN')
@@ -38,7 +40,7 @@ function SortIcon({ active, dir }: { active: boolean; dir: SortDir }) {
 }
 
 export function ChannelBrand() {
-  const { sales, asOfDate } = useData()
+  const { sales, dailySummary, asOfDate } = useData()
 
   const [selectedBrands, setSelectedBrands] = useState<string[]>(['All'])
   const [selectedChannels, setSelectedChannels] = useState<string[]>(['All'])
@@ -78,16 +80,24 @@ export function ChannelBrand() {
     } else setSelectedChannels([...next, ch])
   }
 
+  // Per-channel WoW + MoM, now from the summary table.
   const channelRows = useMemo(
     () => allChannels.map((ch) => {
-      const wow = buildMetricSummary(sales, weekOverWeekWindows(asOfDate), { channel: ch })
-      const mom = buildMetricSummary(sales, monthOverMonthWindows(asOfDate), { channel: ch })
-      return { channel: ch, wow, mom }
+      const wow = weekOverWeekFromSummary(filterSummary(dailySummary, '0000-01-01', '9999-12-31', { channel: ch }), asOfDate)
+      const mom = monthOverMonthFromSummary(filterSummary(dailySummary, '0000-01-01', '9999-12-31', { channel: ch }), asOfDate)
+      const wowChangePct = wow.prior.sales > 0 ? ((wow.current.sales - wow.prior.sales) / wow.prior.sales) * 100 : null
+      const momChangePct = mom.prior.sales > 0 ? ((mom.current.sales - mom.prior.sales) / mom.prior.sales) * 100 : null
+      return {
+        channel: ch,
+        wow: { current: wow.current.sales, changePct: wowChangePct },
+        mom: { current: mom.current.sales, changePct: momChangePct },
+      }
     }),
-    [allChannels, sales, asOfDate]
+    [allChannels, dailySummary, asOfDate]
   )
 
   const monthStart = firstOfMonth(asOfDate)
+  const yesterday = addDays(asOfDate, -1)
 
   const summaryLabels = {
     thisMonth: 'This Month',
@@ -97,40 +107,57 @@ export function ChannelBrand() {
     custom: 'Custom',
   }
 
-  const summarySales = useMemo(() => {
+  const summaryRange = useMemo(() => {
     const d = new Date(asOfDate)
     const ranges: Record<string, { start: string; end: string }> = {
-      thisMonth: { start: monthStart, end: monthOverMonthWindows(asOfDate).current.end },
-      last7: { start: addDays(asOfDate, -7), end: asOfDate },
-      last15: { start: addDays(asOfDate, -15), end: asOfDate },
+      thisMonth: { start: monthStart, end: monthOverMonthFromSummary(dailySummary, asOfDate).currentWindow.end },
+      last7: { start: addDays(asOfDate, -7), end: yesterday },
+      last15: { start: addDays(asOfDate, -15), end: yesterday },
       lastMonth: {
         start: toDateString(new Date(d.getFullYear(), d.getMonth() - 1, 1)),
         end: toDateString(new Date(d.getFullYear(), d.getMonth(), 0)),
       },
       custom: {
         start: summaryCustomStart || monthStart,
-        end: summaryCustomEnd || asOfDate,
+        end: summaryCustomEnd || yesterday,
       },
     }
-    let filtered = filterSales(sales, ranges[summaryPreset])
+    return ranges[summaryPreset]
+  }, [asOfDate, summaryPreset, monthStart, yesterday, summaryCustomStart, summaryCustomEnd, dailySummary])
+
+  const summaryTotals = useMemo(() => {
+    let filtered = filterSummary(dailySummary, summaryRange.start, summaryRange.end)
+    if (summaryBrand !== 'All') filtered = filtered.filter((r) => r.brand === summaryBrand)
+    if (summaryCompany !== 'All') filtered = filtered.filter((r) => r.channel.startsWith(summaryCompany))
+    return sumSummary(filtered)
+  }, [dailySummary, summaryRange, summaryBrand, summaryCompany])
+
+  // Row-level detail still needed for Quick Insights (SKU-aware).
+  const rangeSalesRows = useMemo(() => {
+    let filtered = filterSales(sales, summaryRange)
     if (summaryBrand !== 'All') filtered = filtered.filter((s) => s.brand === summaryBrand)
     if (summaryCompany !== 'All') filtered = filtered.filter((s) => s.channel.startsWith(summaryCompany))
     return filtered
-  }, [sales, asOfDate, summaryPreset, monthStart, summaryBrand, summaryCompany, summaryCustomStart, summaryCustomEnd])
+  }, [sales, summaryRange, summaryBrand, summaryCompany])
 
-  const summaryTotal = summarySales.reduce((a, s) => a + s.invoiceAmount, 0)
-  const summaryUnits = summarySales.reduce((a, s) => a + s.qty, 0)
-  const summaryOrders = new Set(summarySales.map((s) => s.channelOrderId).filter(Boolean)).size
+  // Brand/Channel breakdown for the tables below — from the summary table, filtered by the multi-select pills.
+  const tableWindow = useMemo(() => monthOverMonthFromSummary(dailySummary, asOfDate).currentWindow, [dailySummary, asOfDate])
 
-  const rangeSales = useMemo(() => {
-  let filtered = filterSales(sales, { start: monthStart, end: monthOverMonthWindows(asOfDate).current.end })
-    if (!selectedBrands.includes('All')) filtered = filtered.filter((s) => selectedBrands.includes(s.brand))
-    if (!selectedChannels.includes('All')) filtered = filtered.filter((s) => selectedChannels.includes(s.channel))
-    return filtered
-  }, [sales, asOfDate, monthStart, selectedBrands, selectedChannels])
+  const filteredSummaryRows = useMemo(() => {
+    let rows = filterSummary(dailySummary, tableWindow.start, tableWindow.end)
+    if (!selectedBrands.includes('All')) rows = rows.filter((r) => selectedBrands.includes(r.brand))
+    if (!selectedChannels.includes('All')) rows = rows.filter((r) => selectedChannels.includes(r.channel))
+    return rows
+  }, [dailySummary, tableWindow, selectedBrands, selectedChannels])
 
-  const byChannel = useMemo(() => groupBy(rangeSales, (s) => s.channel), [rangeSales])
-  const byBrand = useMemo(() => groupBy(rangeSales, (s) => s.brand), [rangeSales])
+  const byChannel = useMemo(
+    () => groupByChannelFromSummary(filteredSummaryRows, tableWindow.start, tableWindow.end),
+    [filteredSummaryRows, tableWindow]
+  )
+  const byBrand = useMemo(
+    () => groupByBrandFromSummary(filteredSummaryRows, tableWindow.start, tableWindow.end),
+    [filteredSummaryRows, tableWindow]
+  )
   const topChannel = byChannel[0]
   const worstChannel = byChannel[byChannel.length - 1]
   const totalSales = byChannel.reduce((a, c) => a + c.sales, 0)
@@ -169,14 +196,13 @@ export function ChannelBrand() {
               {summaryBrand !== 'All' ? ` · ${summaryBrand}` : ''}
               {summaryCompany !== 'All' ? ` · ${summaryCompany}` : ''}
             </div>
-            <div className="font-display text-3xl text-[var(--color-charcoal)]">{inr(summaryTotal)}</div>
+            <div className="font-display text-3xl text-[var(--color-charcoal)]">{inr(summaryTotals.sales)}</div>
             <div className="text-sm text-[var(--color-muted)] mt-1">
-              {summaryUnits.toLocaleString('en-IN')} units · {summaryOrders.toLocaleString('en-IN')} orders
+              {summaryTotals.units.toLocaleString('en-IN')} units · {summaryTotals.orders.toLocaleString('en-IN')} orders
             </div>
           </div>
 
           <div className="space-y-3 bg-[var(--color-cream)] rounded-xl p-4">
-            {/* Date Range */}
             <div>
               <div className="text-xs uppercase tracking-wide text-[var(--color-muted)] mb-2">Date Range</div>
               <div className="flex flex-wrap gap-1.5">
@@ -202,7 +228,6 @@ export function ChannelBrand() {
               )}
             </div>
 
-            {/* Brand */}
             <div>
               <div className="text-xs uppercase tracking-wide text-[var(--color-muted)] mb-2">Brand</div>
               <div className="flex flex-wrap gap-1.5">
@@ -217,7 +242,6 @@ export function ChannelBrand() {
               </div>
             </div>
 
-            {/* Company */}
             <div>
               <div className="text-xs uppercase tracking-wide text-[var(--color-muted)] mb-2">Company</div>
               <div className="flex flex-wrap gap-1.5">
@@ -425,7 +449,7 @@ export function ChannelBrand() {
       {/* Quick Insights */}
       <Reveal delay={220}>
         <div className="mb-8">
-          <QuickInsights sales={rangeSales} label="This Month" />
+          <QuickInsights sales={rangeSalesRows} label="This Month" />
         </div>
       </Reveal>
     </PageLayout>

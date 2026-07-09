@@ -11,51 +11,53 @@ import { WoWComparison } from '../components/WoWComparison'
 import { SalesSummaryCard } from '../components/SalesSummaryCard'
 import { AvgSellingPriceCard } from '../components/AvgSellingPriceCard'
 import {
-  dayOverDayWindows,
-  weekOverWeekWindows,
   monthOverMonthWindows,
-  yearToDateWindow,
-  weightedRunRate,
+  weekOverWeekWindows,
   formatDisplayDate,
   formatShortDate,
   addDays,
 } from '../lib/dateLogic'
+import { filterSales, groupBy } from '../lib/aggregations'
 import {
-  buildMetricSummary,
-  filterSales,
-  sumSales,
-  groupBy,
-  groupByDate,
-} from '../lib/aggregations'
+  yesterdayFromSummary,
+  weekOverWeekFromSummary,
+  monthOverMonthFromSummary,
+  ytdFromSummary,
+  weightedRunRateFromSummary,
+  groupByBrandFromSummary,
+  groupByChannelFromSummary,
+  groupByDateFromSummary,
+} from '../lib/summaryAggregations'
 
 const inr = (n: number) => '₹' + Math.round(n).toLocaleString('en-IN')
 
 export function SalesOverview() {
-  const { sales, asOfDate, skuStyleMap } = useData()
+  const { sales, todaySales, dailySummary, skuStyleMap, asOfDate } = useData()
   const [overviewBrandFilter, setOverviewBrandFilter] = useState('All')
 
-  const dod = useMemo(() => buildMetricSummary(sales, dayOverDayWindows(asOfDate)), [sales, asOfDate])
-  const wow = useMemo(() => buildMetricSummary(sales, weekOverWeekWindows(asOfDate)), [sales, asOfDate])
+  const todayTotal = useMemo(() => todaySales.reduce((a, s) => a + s.invoiceAmount, 0), [todaySales])
+  const yesterdaySummary = useMemo(() => yesterdayFromSummary(dailySummary, asOfDate), [dailySummary, asOfDate])
+  const yesterdaySales = yesterdaySummary.sales
+  const dodChangeAmount = todayTotal - yesterdaySales
+  const dodChangePct = yesterdaySales > 0 ? (dodChangeAmount / yesterdaySales) * 100 : null
 
-  const monthTotalSales = useMemo(() => {
-  const { start, end } = monthOverMonthWindows(asOfDate).current
-  return sales
-    .filter((s) => s.date >= start && s.date <= end)
-    .reduce((a, s) => a + s.invoiceAmount, 0)
-}, [sales, asOfDate])
+  const wowSummary = useMemo(() => weekOverWeekFromSummary(dailySummary, asOfDate), [dailySummary, asOfDate])
+  const wowChangeAmount = wowSummary.current.sales - wowSummary.prior.sales
+  const wowChangePct = wowSummary.prior.sales > 0 ? (wowChangeAmount / wowSummary.prior.sales) * 100 : null
 
-  const ytdWindow = useMemo(() => yearToDateWindow(asOfDate), [asOfDate])
-  const ytdSales = useMemo(() => sumSales(filterSales(sales, ytdWindow)), [sales, ytdWindow])
+  const mtmSummary = useMemo(() => monthOverMonthFromSummary(dailySummary, asOfDate), [dailySummary, asOfDate])
+  const monthTotalSales = mtmSummary.current.sales
 
-  const runRateValue = useMemo(
-    () => weightedRunRate(sales.map((s) => ({ date: s.date, qty: s.qty })), asOfDate),
-    [sales, asOfDate]
-  )
+  const ytdSales = useMemo(() => ytdFromSummary(dailySummary, asOfDate).sales, [dailySummary, asOfDate])
+
+  const runRateValue = useMemo(() => weightedRunRateFromSummary(dailySummary, asOfDate), [dailySummary, asOfDate])
 
   const sparklineValues = useMemo(() => {
-    const since = addDays(asOfDate, -14)
-    return groupByDate(sales.filter((s) => s.date >= since)).map((g) => g.sales)
-  }, [sales, asOfDate])
+    const yesterday = addDays(asOfDate, -1)
+    const since = addDays(yesterday, -13)
+    const daily = groupByDateFromSummary(dailySummary, since, yesterday)
+    return [...daily.map((d) => d.sales), todayTotal]
+  }, [dailySummary, asOfDate, todayTotal])
 
   const allChannels = useMemo(() =>
     Array.from(new Set(sales.map((s) => s.channel))).filter(Boolean).sort(),
@@ -63,43 +65,47 @@ export function SalesOverview() {
   )
 
   const monthSales = useMemo(
-  () => filterSales(sales, monthOverMonthWindows(asOfDate).current),
-  [sales, asOfDate]
- )
-
-  const byChannel = useMemo(() => groupBy(monthSales, (s) => s.channel), [monthSales])
-  const byBrand = useMemo(() => groupBy(monthSales, (s) => s.brand), [monthSales])
+    () => filterSales(sales, monthOverMonthWindows(asOfDate).current),
+    [sales, asOfDate]
+  )
   const topSkus = useMemo(
     () => groupBy(monthSales, (s) => s.listingSku || s.skuCode || 'Unknown').slice(0, 10),
     [monthSales]
   )
 
-  const rangeTotalSales = monthSales.reduce((a, s) => a + s.invoiceAmount, 0)
-  const rangeTotalUnits = monthSales.reduce((a, s) => a + s.qty, 0)
-  const rangeOrderCount = new Set(monthSales.map((s) => s.channelOrderId).filter(Boolean)).size
-  const rangeAOV = monthSales.length > 0 ? rangeTotalSales / monthSales.length : 0
+  const byChannel = useMemo(
+    () => groupByChannelFromSummary(dailySummary, mtmSummary.currentWindow.start, mtmSummary.currentWindow.end),
+    [dailySummary, mtmSummary]
+  )
+  const byBrand = useMemo(
+    () => groupByBrandFromSummary(dailySummary, mtmSummary.currentWindow.start, mtmSummary.currentWindow.end),
+    [dailySummary, mtmSummary]
+  )
 
-  const wtdLabel = `${formatShortDate(weekOverWeekWindows(asOfDate).current.start)} – ${formatShortDate(asOfDate)}`
-  const monthLabel = `1 ${new Date(asOfDate).toLocaleDateString('en-GB', { month: 'short' })} – ${formatShortDate(monthOverMonthWindows(asOfDate).current.end)}`
+  const rangeTotalSales = mtmSummary.current.sales
+  const rangeTotalUnits = mtmSummary.current.units
+  const rangeOrderCount = mtmSummary.current.orders
+  const rangeAOV = rangeOrderCount > 0 ? rangeTotalSales / rangeOrderCount : 0
+
+  const wtdLabel = `${formatShortDate(weekOverWeekWindows(asOfDate).current.start)} – ${formatShortDate(wowSummary.currentWindow.end)}`
+  const monthLabel = `1 ${new Date(asOfDate).toLocaleDateString('en-GB', { month: 'short' })} – ${formatShortDate(mtmSummary.currentWindow.end)}`
 
   return (
     <PageLayout
       title="Sales Overview"
-      subtitle={`As of ${formatDisplayDate(asOfDate)} · ${sales.length.toLocaleString()} order line items loaded`}
+      subtitle={`As of ${formatDisplayDate(asOfDate)} · ${sales.length.toLocaleString()} recent order line items loaded`}
     >
-      {/* KPI Cards */}
       <Reveal>
         <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-8">
-          <MetricCard icon={ShoppingBag} label="Today" value={inr(dod.current)} rawValue={dod.current} changePct={dod.changePct} changeAmount={dod.changeAmount} accent="sage" sparkline={sparklineValues} dateLabel={formatDisplayDate(asOfDate)} />
-          <MetricCard icon={CalendarDays} label="Yesterday" value={inr(dod.prior)} rawValue={dod.prior} accent="blue" sparkline={sparklineValues} dateLabel={formatDisplayDate(addDays(asOfDate, -1))} />
-          <MetricCard icon={TrendingUp} label="This Week" value={inr(wow.current)} rawValue={wow.current} changePct={wow.changePct} changeAmount={wow.changeAmount} accent="purple" sparkline={sparklineValues} dateLabel={wtdLabel} />
+          <MetricCard icon={ShoppingBag} label="Today" value={inr(todayTotal)} rawValue={todayTotal} changePct={dodChangePct ?? undefined} changeAmount={dodChangeAmount} accent="sage" sparkline={sparklineValues} dateLabel={formatDisplayDate(asOfDate)} />
+          <MetricCard icon={CalendarDays} label="Yesterday" value={inr(yesterdaySales)} rawValue={yesterdaySales} accent="blue" sparkline={sparklineValues} dateLabel={formatDisplayDate(addDays(asOfDate, -1))} />
+          <MetricCard icon={TrendingUp} label="This Week" value={inr(wowSummary.current.sales)} rawValue={wowSummary.current.sales} changePct={wowChangePct ?? undefined} changeAmount={wowChangeAmount} accent="purple" sparkline={sparklineValues} dateLabel={wtdLabel} />
           <MetricCard icon={Wallet} label="Month Sales" value={inr(monthTotalSales)} rawValue={monthTotalSales} accent="corn" sparkline={sparklineValues} dateLabel={monthLabel} />
-          <MetricCard icon={BarChart2} label="Year Sales" value={inr(ytdSales)} rawValue={ytdSales} accent="emerald" sparkline={sparklineValues} dateLabel={`1 Jan – ${formatShortDate(asOfDate)}`} />
+          <MetricCard icon={BarChart2} label="Year Sales" value={inr(ytdSales)} rawValue={ytdSales} accent="emerald" sparkline={sparklineValues} dateLabel={`1 Jan – ${formatShortDate(addDays(asOfDate, -1))}`} />
           <MetricCard icon={Crosshair} label="Run Rate" value={`${runRateValue.toFixed(1)} u/day`} rawValue={runRateValue} accent="orange" sparkline={sparklineValues} dateLabel="30d weighted avg" />
         </div>
       </Reveal>
 
-      {/* Range summary cards */}
       <Reveal delay={80}>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           <MetricCard icon={Wallet} label="Sales — This Month" value={inr(rangeTotalSales)} accent="sage" />
@@ -109,7 +115,6 @@ export function SalesOverview() {
         </div>
       </Reveal>
 
-      {/* Sales Summary with brand filter */}
       <Reveal delay={100}>
         <SalesSummaryCard
           sales={sales}
@@ -118,17 +123,17 @@ export function SalesOverview() {
           onBrandChange={setOverviewBrandFilter}
         />
       </Reveal>
+
       <Reveal delay={102}>
-   <div className="mb-6">
-    <AvgSellingPriceCard
-      sales={sales}
-      skuStyleMap={skuStyleMap}
-      asOfDate={asOfDate}
-    />
-   </div>
-   
+        <div className="mb-6">
+          <AvgSellingPriceCard
+            sales={sales}
+            skuStyleMap={skuStyleMap}
+            asOfDate={asOfDate}
+          />
+        </div>
       </Reveal>
-      {/* MTM + WoW side by side */}
+
       <Reveal delay={105}>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
           <MTMComparison sales={sales} asOfDate={asOfDate} brandFilter={overviewBrandFilter} />
@@ -136,7 +141,6 @@ export function SalesOverview() {
         </div>
       </Reveal>
 
-      {/* Filtered Trend Chart — same as Home */}
       <Reveal delay={120}>
         <FilteredTrendSection
           sales={sales}
@@ -146,7 +150,6 @@ export function SalesOverview() {
         />
       </Reveal>
 
-      {/* Channel + Brand tables */}
       <Reveal delay={160}>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
           <div className="card p-5">
@@ -198,7 +201,6 @@ export function SalesOverview() {
         </div>
       </Reveal>
 
-      {/* Top SKUs */}
       <Reveal delay={200}>
         <div className="card p-5">
           <h3 className="font-display text-lg mb-4">Top 10 SKUs — This Month</h3>

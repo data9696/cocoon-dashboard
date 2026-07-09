@@ -1,17 +1,20 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
-import { fetchAllSales, fetchAllStock, fetchSkuStyleMap } from './queries'
+import { fetchAllSales, fetchAllStock, fetchSkuStyleMap, fetchDailySalesSummary, fetchTodaySales } from './queries'
 import { latestDateWithData } from './aggregations'
 import { todayIST } from './dateLogic'
 import { getCached, setCached, clearCached } from './cache'
-import type { NormalizedSale, StockSnapshot, SkuStyleMap } from '../types'
+import type { NormalizedSale, StockSnapshot, SkuStyleMap, DailySummaryRow } from '../types'
 
 const SALES_CACHE_KEY = 'cache_sales_v1'
 const STOCK_CACHE_KEY = 'cache_stock_v1'
 const STYLE_MAP_CACHE_KEY = 'cache_style_map_v1'
+const SUMMARY_CACHE_KEY = 'cache_summary_v1'
 
 interface DataContextValue {
   sales: NormalizedSale[]
+  todaySales: NormalizedSale[]
+  dailySummary: DailySummaryRow[]
   stock: StockSnapshot[]
   skuStyleMap: SkuStyleMap[]
   loading: boolean
@@ -27,6 +30,8 @@ const DataContext = createContext<DataContextValue | undefined>(undefined)
 
 export function DataProvider({ children }: { children: ReactNode }) {
   const [sales, setSales] = useState<NormalizedSale[]>([])
+  const [todaySales, setTodaySales] = useState<NormalizedSale[]>([])
+  const [dailySummary, setDailySummary] = useState<DailySummaryRow[]>([])
   const [stock, setStock] = useState<StockSnapshot[]>([])
   const [skuStyleMap, setSkuStyleMap] = useState<SkuStyleMap[]>([])
   const [loading, setLoading] = useState(true)
@@ -43,15 +48,18 @@ export function DataProvider({ children }: { children: ReactNode }) {
       clearCached(SALES_CACHE_KEY)
       clearCached(STOCK_CACHE_KEY)
       clearCached(STYLE_MAP_CACHE_KEY)
+      clearCached(SUMMARY_CACHE_KEY)
       setLoading(true)
     } else {
       const cachedSales = getCached<NormalizedSale[]>(SALES_CACHE_KEY)
       const cachedStock = getCached<StockSnapshot[]>(STOCK_CACHE_KEY)
       const cachedStyleMap = getCached<SkuStyleMap[]>(STYLE_MAP_CACHE_KEY)
-      if (cachedSales && cachedStock) {
+      const cachedSummary = getCached<DailySummaryRow[]>(SUMMARY_CACHE_KEY)
+      if (cachedSales && cachedStock && cachedSummary) {
         setSales(cachedSales)
         setStock(cachedStock)
         if (cachedStyleMap) setSkuStyleMap(cachedStyleMap)
+        setDailySummary(cachedSummary)
         setLoading(false)
       } else {
         setLoading(true)
@@ -60,16 +68,19 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
     setError(null)
 
-    Promise.all([fetchAllSales(), fetchAllStock(), fetchSkuStyleMap()])
-      .then(([salesData, stockData, styleMapData]) => {
+    Promise.all([fetchAllSales(), fetchAllStock(), fetchSkuStyleMap(), fetchDailySalesSummary(), fetchTodaySales()])
+      .then(([salesData, stockData, styleMapData, summaryData, todayData]) => {
         if (cancelled) return
         setSales(salesData)
         setStock(stockData)
         setSkuStyleMap(styleMapData)
+        setDailySummary(summaryData)
+        setTodaySales(todayData)
         setLastSyncedAt(new Date())
         setCached(SALES_CACHE_KEY, salesData)
         setCached(STOCK_CACHE_KEY, stockData)
         setCached(STYLE_MAP_CACHE_KEY, styleMapData)
+        setCached(SUMMARY_CACHE_KEY, summaryData)
       })
       .catch((err) => {
         if (cancelled) return
@@ -89,6 +100,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const value: DataContextValue = {
     sales,
+    todaySales,
+    dailySummary,
     stock,
     skuStyleMap,
     loading,
