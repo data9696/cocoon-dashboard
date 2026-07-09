@@ -13,6 +13,7 @@ import { SalesOverview } from './pages/SalesOverview'
 import { ChannelBrand } from './pages/ChannelBrand'
 import { ProductAnalysis } from './pages/ProductAnalysis'
 import { Inventory } from './pages/Inventory'
+import { InsightsPage } from './pages/InsightsPage'
 
 function AppShell() {
   const { loading } = useData()
@@ -30,6 +31,7 @@ function AppShell() {
           <Route path="/channel-brand" element={<ChannelBrand />} />
           <Route path="/products" element={<ProductAnalysis />} />
           <Route path="/admin" element={<AdminPage />} />
+          <Route path="/insights" element={<InsightsPage />} />
         </Routes>
       </main>
     </div>

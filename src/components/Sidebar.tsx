@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { NavLink } from 'react-router-dom'
 import clsx from 'clsx'
-import { LayoutDashboard, BarChart3, Store, Package, Boxes, Menu, X, LogOut, ShieldCheck, Pencil } from 'lucide-react'
+import { LayoutDashboard, BarChart3, Store, Package, Boxes, Sparkles, Menu, X, LogOut, ShieldCheck, Pencil } from 'lucide-react'
 import { useAuth } from '../lib/AuthContext'
 import { getLocalAvatar } from '../lib/localAvatar'
 import { ProfileModal } from './ProfileModal'
@@ -12,6 +12,7 @@ const NAV_ITEMS = [
   { to: '/channel-brand', label: 'Channel & Brand', icon: Store },
   { to: '/products', label: 'Product & Stock', icon: Package },
   { to: '/inventory', label: 'Inventory', icon: Boxes },
+  { to: '/insights', label: 'Insights & AI', icon: Sparkles },
 ]
 
 export function Sidebar() {
