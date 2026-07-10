@@ -15,7 +15,7 @@ export function TargetProgress({
   const data = [{ name: 'progress', value: gaugeValue, fill: hit ? '#15803d' : '#e8c468' }]
 
   return (
-    <div className="card p-5 h-full flex flex-col">
+    <div className="card p-5 h-full">
       <div className="text-xs uppercase tracking-wide text-[var(--color-muted)] mb-2">
         Monthly Target Progress
       </div>
