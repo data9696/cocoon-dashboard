@@ -9,12 +9,25 @@ interface Props {
   sales: NormalizedSale[]
   skuStyleMap: SkuStyleMap[]
   asOfDate: string
-  trendDays?: number
 }
 
-export function AvgSellingPriceCard({ sales, skuStyleMap, asOfDate, trendDays = 14 }: Props) {
+const DATE_RANGE_OPTIONS = [
+  { key: 'yesterday', label: 'Yesterday', days: 1 },
+  { key: 'last7', label: 'Last 7 Days', days: 7 },
+  { key: 'last15', label: 'Last 15 Days', days: 15 },
+  { key: 'last30', label: 'Last 30 Days', days: 30 },
+]
+
+const ALL_BRANDS = ['All', 'Cocoon Care', 'The Boo Boo Club']
+
+export function AvgSellingPriceCard({ sales, skuStyleMap, asOfDate }: Props) {
   const [channel, setChannel] = useState('All')
   const [category, setCategory] = useState('All')
+  const [brand, setBrand] = useState('All')
+  const [dateRangeKey, setDateRangeKey] = useState('yesterday')
+
+  const dateRangeOption = DATE_RANGE_OPTIONS.find((d) => d.key === dateRangeKey) || DATE_RANGE_OPTIONS[0]
+  const trendDays = Math.max(dateRangeOption.days, 14)
 
   const skuToCategory = useMemo(() => {
     const map = new Map<string, string>()
@@ -42,9 +55,10 @@ export function AvgSellingPriceCard({ sales, skuStyleMap, asOfDate, trendDays = 
     return sales.filter((s) => {
       if (channel !== 'All' && s.channel !== channel) return false
       if (category !== 'All' && categoryOf(s.skuCode) !== category) return false
+      if (brand !== 'All' && s.brand !== brand) return false
       return true
     })
-  }, [sales, channel, category, skuToCategory])
+  }, [sales, channel, category, brand, skuToCategory])
 
   const trend = useMemo(() => {
     const yesterday = addDays(asOfDate, -1)
@@ -72,10 +86,39 @@ export function AvgSellingPriceCard({ sales, skuStyleMap, asOfDate, trendDays = 
     }))
   }, [filtered, asOfDate, trendDays])
 
-  const yesterdayASP = trend.length > 0 ? trend[trend.length - 1].asp : 0
-  const dayBeforeASP = trend.length > 1 ? trend[trend.length - 2].asp : 0
-  const diff = yesterdayASP - dayBeforeASP
-  const pct = dayBeforeASP > 0 ? (diff / dayBeforeASP) * 100 : 0
+  // Current period ASP (based on selected date range) vs the equal-length period before it.
+  const { currentASP, priorASP, rangeLabel } = useMemo(() => {
+    const yesterday = addDays(asOfDate, -1)
+    const currentStart = addDays(yesterday, -(dateRangeOption.days - 1))
+    const priorEnd = addDays(currentStart, -1)
+    const priorStart = addDays(priorEnd, -(dateRangeOption.days - 1))
+
+    function totals(start: string, end: string) {
+      let revenue = 0
+      let units = 0
+      for (const s of filtered) {
+        if (s.date >= start && s.date <= end) {
+          revenue += s.invoiceAmount
+          units += s.qty
+        }
+      }
+      return units > 0 ? revenue / units : 0
+    }
+
+    const label =
+      dateRangeOption.days === 1
+        ? formatShortDate(yesterday)
+        : `${formatShortDate(currentStart)} – ${formatShortDate(yesterday)}`
+
+    return {
+      currentASP: totals(currentStart, yesterday),
+      priorASP: totals(priorStart, priorEnd),
+      rangeLabel: label,
+    }
+  }, [filtered, asOfDate, dateRangeOption])
+
+  const diff = currentASP - priorASP
+  const pct = priorASP > 0 ? (diff / priorASP) * 100 : 0
   const isUp = diff >= 0
 
   function FilterDropdown({
@@ -110,17 +153,28 @@ export function AvgSellingPriceCard({ sales, skuStyleMap, asOfDate, trendDays = 
       <div className="flex items-start justify-between flex-wrap gap-4 mb-4">
         <div>
           <div className="text-xs uppercase tracking-wide text-[var(--color-muted)] mb-1">
-            Avg Selling Price — Yesterday
+            Avg Selling Price — {rangeLabel}
+            {brand !== 'All' ? ` · ${brand}` : ''}
             {channel !== 'All' ? ` · ${channel}` : ''}
             {category !== 'All' ? ` · ${category}` : ''}
           </div>
-          <div className="font-display text-3xl text-[var(--color-charcoal)]">{inr(yesterdayASP)}</div>
+          <div className="font-display text-3xl text-[var(--color-charcoal)]">{inr(currentASP)}</div>
           <div className={`text-sm font-medium mt-1 ${isUp ? 'text-[var(--color-sage-dark)]' : 'text-[#dc2626]'}`}>
-            {isUp ? '▲' : '▼'} {Math.abs(pct).toFixed(1)}% vs day before ({inr(dayBeforeASP)})
+            {isUp ? '▲' : '▼'} {Math.abs(pct).toFixed(1)}% vs prior period ({inr(priorASP)})
           </div>
         </div>
 
-        <div className="flex flex-col gap-3 min-w-[200px]">
+        <div className="grid grid-cols-2 gap-3 min-w-[280px]">
+          <FilterDropdown
+            label="Date Range"
+            options={DATE_RANGE_OPTIONS.map((d) => d.label)}
+            value={dateRangeOption.label}
+            onChange={(v) => {
+              const opt = DATE_RANGE_OPTIONS.find((d) => d.label === v)
+              if (opt) setDateRangeKey(opt.key)
+            }}
+          />
+          <FilterDropdown label="Brand" options={ALL_BRANDS} value={brand} onChange={setBrand} />
           <FilterDropdown label="Channel" options={channels} value={channel} onChange={setChannel} />
           <FilterDropdown label="Category" options={categories} value={category} onChange={setCategory} />
         </div>

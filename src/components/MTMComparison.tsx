@@ -44,10 +44,10 @@ export function MTMComparison({ sales, asOfDate, brandFilter = 'All' }: Props) {
       <div className={`flex items-center justify-between mb-4 p-3 rounded-xl ${isUp ? 'bg-[#dcfce7]' : 'bg-[#fee2e2]'}`}>
         <div className="text-4xl">{isUp ? '📈' : '📉'}</div>
         <div className="text-right">
-          <div className={`text-3xl font-bold ${isUp ? 'text-[#166534]' : 'text-[#991b1b]'}`}>
+          <div className={`text-sm font-medium ${isUp ? 'text-[#166534]' : 'text-[#991b1b]'}`}>
             {isUp ? '+' : ''}{pct.toFixed(1)}%
           </div>
-          <div className={`text-sm font-medium ${isUp ? 'text-[#166534]' : 'text-[#991b1b]'}`}>
+          <div className={`text-3xl font-bold ${isUp ? 'text-[#166534]' : 'text-[#991b1b]'}`}>
             {isUp ? '+' : ''}{inr(diff)}
           </div>
         </div>
