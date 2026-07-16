@@ -81,6 +81,22 @@ export function SalesOverview() {
     () => groupByBrandFromSummary(dailySummary, mtmSummary.currentWindow.start, mtmSummary.currentWindow.end),
     [dailySummary, mtmSummary]
   )
+  const byChannelPrior = useMemo(
+    () => groupByChannelFromSummary(dailySummary, mtmSummary.priorWindow.start, mtmSummary.priorWindow.end),
+    [dailySummary, mtmSummary]
+  )
+  const byBrandPrior = useMemo(
+    () => groupByBrandFromSummary(dailySummary, mtmSummary.priorWindow.start, mtmSummary.priorWindow.end),
+    [dailySummary, mtmSummary]
+  )
+  const byChannelPriorMap = useMemo(
+    () => new Map(byChannelPrior.map((c) => [c.key, c.sales])),
+    [byChannelPrior]
+  )
+  const byBrandPriorMap = useMemo(
+    () => new Map(byBrandPrior.map((b) => [b.key, b.sales])),
+    [byBrandPrior]
+  )
 
   const rangeTotalSales = mtmSummary.current.sales
   const rangeTotalUnits = mtmSummary.current.units
@@ -160,19 +176,31 @@ export function SalesOverview() {
                   <th className="pb-2">Channel</th>
                   <th className="pb-2 text-right">Sales</th>
                   <th className="pb-2 text-right">Units</th>
+                  <th className="pb-2 text-right">Last Month</th>
+                  <th className="pb-2 text-right">vs LM</th>
                 </tr>
               </thead>
               <tbody>
-                {byChannel.map((c) => (
-                  <tr key={c.key} className="border-t border-[var(--color-border)]">
-                    <td className="py-2 flex items-center gap-2">
-                      <ChannelBadge channel={c.key} />
-                      {c.key}
-                    </td>
-                    <td className="py-2 text-right">{inr(c.sales)}</td>
-                    <td className="py-2 text-right">{c.units}</td>
-                  </tr>
-                ))}
+                {byChannel.map((c) => {
+                  const priorSales = byChannelPriorMap.get(c.key) ?? 0
+                  const change = priorSales > 0 ? ((c.sales - priorSales) / priorSales) * 100 : null
+                  return (
+                    <tr key={c.key} className="border-t border-[var(--color-border)]">
+                      <td className="py-2 flex items-center gap-2">
+                        <ChannelBadge channel={c.key} />
+                        {c.key}
+                      </td>
+                      <td className="py-2 text-right">{inr(c.sales)}</td>
+                      <td className="py-2 text-right">{c.units}</td>
+                      <td className="py-2 text-right text-[var(--color-muted)]">{inr(priorSales)}</td>
+                      <td className={`py-2 text-right font-medium ${
+                        change === null ? 'text-[var(--color-muted)]' : change >= 0 ? 'text-[#16a34a]' : 'text-[#dc2626]'
+                      }`}>
+                        {change === null ? '—' : `${change >= 0 ? '▲' : '▼'} ${Math.abs(change).toFixed(0)}%`}
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>
@@ -185,16 +213,28 @@ export function SalesOverview() {
                   <th className="pb-2">Brand</th>
                   <th className="pb-2 text-right">Sales</th>
                   <th className="pb-2 text-right">Units</th>
+                  <th className="pb-2 text-right">Last Month</th>
+                  <th className="pb-2 text-right">vs LM</th>
                 </tr>
               </thead>
               <tbody>
-                {byBrand.map((b) => (
-                  <tr key={b.key} className="border-t border-[var(--color-border)]">
-                    <td className="py-2">{b.key}</td>
-                    <td className="py-2 text-right">{inr(b.sales)}</td>
-                    <td className="py-2 text-right">{b.units}</td>
-                  </tr>
-                ))}
+                {byBrand.map((b) => {
+                  const priorSales = byBrandPriorMap.get(b.key) ?? 0
+                  const change = priorSales > 0 ? ((b.sales - priorSales) / priorSales) * 100 : null
+                  return (
+                    <tr key={b.key} className="border-t border-[var(--color-border)]">
+                      <td className="py-2">{b.key}</td>
+                      <td className="py-2 text-right">{inr(b.sales)}</td>
+                      <td className="py-2 text-right">{b.units}</td>
+                      <td className="py-2 text-right text-[var(--color-muted)]">{inr(priorSales)}</td>
+                      <td className={`py-2 text-right font-medium ${
+                        change === null ? 'text-[var(--color-muted)]' : change >= 0 ? 'text-[#16a34a]' : 'text-[#dc2626]'
+                      }`}>
+                        {change === null ? '—' : `${change >= 0 ? '▲' : '▼'} ${Math.abs(change).toFixed(0)}%`}
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>
